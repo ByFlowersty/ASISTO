@@ -1,0 +1,45 @@
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Carpetas de dependencias
+node_modules/
+vendor/
+
+# Archivos de entorno
+.env
+.env.local
+*.env
+
+# Archivos de compilación
+dist/
+build/
+out/
+*.log
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Archivos de C / C++
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.out
+
+# Archivos de VSCode / IDEs
+.vscode/
+.idea/
+*.swp
+
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
+*.lock

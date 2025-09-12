@@ -1,0 +1,7 @@
+{
+  "name": "Asistencia QR",
+  "description": "Una aplicación web para que los profesores gestionen las materias, los estudiantes y tomen asistencia de manera eficiente utilizando códigos QR. Genere códigos QR para estudiantes, escanee para marcar la asistencia y vea los registros.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
