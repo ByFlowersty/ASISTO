@@ -2,6 +2,7 @@
 declare global {
   interface ImportMeta {
     readonly env: {
+      VITE_LOGIN_PASSWORD: any;
       readonly VITE_SUPABASE_URL: string;
       readonly VITE_SUPABASE_ANON_KEY: string;
       readonly VITE_API_KEY: string;
