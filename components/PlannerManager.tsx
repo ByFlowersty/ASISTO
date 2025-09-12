@@ -200,7 +200,11 @@ const PlannerManager: React.FC<{
                 },
             });
 
-            const parsedContent = JSON.parse(response.text);
+            const jsonText = response.text;
+            if (!jsonText) {
+                throw new Error("La respuesta de la IA llegó vacía.");
+            }
+            const parsedContent = JSON.parse(jsonText);
             
             setOrganizerData({ content: parsedContent, sources: [] });
         } catch (err) {
