@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -368,7 +367,15 @@ const SubjectDetail: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [subjectRes, studentsRes, attendanceRes, criteriaRes, assignmentsRes, gradesRes, plannedClassesRes] = await Promise.all([
+      const [
+          subjectRes, 
+          studentsRes, 
+          attendanceRes, 
+          criteriaRes, 
+          assignmentsRes, 
+          gradesRes, 
+          plannedClassesRes
+      ] = await Promise.all([
         supabase.from('subjects').select('*').eq('id', subjectId).single(),
         supabase.from('students').select('*').eq('subject_id', subjectId).order('name'),
         supabase.from('attendance_records').select(`*, students (name)`).eq('subject_id', subjectId),
@@ -378,28 +385,25 @@ const SubjectDetail: React.FC = () => {
         supabase.from('planned_classes').select('*').eq('subject_id', subjectId).order('class_date'),
       ]);
 
-      if (subjectRes.error) throw subjectRes.error;
+      // Check for errors in parallel fetches
+      const responses = { subjectRes, studentsRes, attendanceRes, criteriaRes, assignmentsRes, gradesRes, plannedClassesRes };
+      for (const [key, res] of Object.entries(responses)) {
+        if (res.error) throw new Error(`Error fetching ${key}: ${res.error.message}`);
+      }
+      
+      // Set all states
       setSubject(subjectRes.data);
-      if (studentsRes.error) throw studentsRes.error;
-      setStudents(studentsRes.data);
-      if (attendanceRes.error) throw attendanceRes.error;
-      setAttendance(attendanceRes.data as any || []);
-      if (criteriaRes.error) throw criteriaRes.error;
-      setCriteria(criteriaRes.data);
-      if (assignmentsRes.error) throw assignmentsRes.error;
-      setAssignments(assignmentsRes.data);
-      if (gradesRes.error) throw gradesRes.error;
-      setGrades(gradesRes.data);
-      if (plannedClassesRes.error) throw plannedClassesRes.error;
+      setStudents(studentsRes.data || []);
+      setAttendance((attendanceRes.data as any) || []);
+      setCriteria(criteriaRes.data || []);
+      setAssignments(assignmentsRes.data || []);
+      setGrades(gradesRes.data || []);
       setPlannedClasses(plannedClassesRes.data || []);
-
 
       // Fetch participations separately to handle missing table gracefully
       const participationsRes = await supabase.from('participations').select('*').eq('subject_id', subjectId);
       
       if (participationsRes.error) {
-          // Any error here (table not found, etc.) should not crash the page.
-          // We'll log a warning and disable the feature.
           console.warn(
               "Error al cargar participaciones. La funcionalidad de participaciones está deshabilitada. " +
               "Esto es esperado si la tabla 'participations' aún no ha sido creada en la base de datos.",
@@ -494,6 +498,38 @@ const SubjectDetail: React.FC = () => {
     return dates;
   }, [subject]);
   
+    const studentsWithPendingAssignments = useMemo(() => {
+        const defaultCriteriaIds = new Set(
+            criteria.filter(c => c.type === 'default').map(c => c.id)
+        );
+
+        const gradableAssignments = assignments.filter(a => defaultCriteriaIds.has(a.evaluation_criterion_id));
+
+        if (gradableAssignments.length === 0) {
+            return new Set<string>();
+        }
+
+        const studentGradedAssignments = new Map<string, Set<string>>();
+        grades.forEach(grade => {
+            if (!studentGradedAssignments.has(grade.student_id)) {
+                studentGradedAssignments.set(grade.student_id, new Set());
+            }
+            studentGradedAssignments.get(grade.student_id)!.add(grade.assignment_id);
+        });
+
+        const pendingStudents = new Set<string>();
+        students.forEach(student => {
+            const gradedAssignmentIds = studentGradedAssignments.get(student.id) || new Set();
+            const hasMissingAssignment = gradableAssignments.some(assignment => !gradedAssignmentIds.has(assignment.id));
+            
+            if (hasMissingAssignment) {
+                pendingStudents.add(student.id);
+            }
+        });
+
+        return pendingStudents;
+    }, [students, assignments, grades, criteria]);
+
   const startAttendanceSession = async () => {
     if (!subjectId) return;
     try {
@@ -648,7 +684,16 @@ const SubjectDetail: React.FC = () => {
                         <ul className="divide-y divide-gray-200">
                             {students.map(student => (
                                 <li key={student.id} className="py-3 px-2 flex justify-between items-center hover:bg-gray-50 rounded-md">
-                                    <span className="text-gray-800 font-medium">{student.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-gray-800 font-medium">{student.name}</span>
+                                        {studentsWithPendingAssignments.has(student.id) && (
+                                            <div title="Tiene actividades pendientes de calificar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
                                     <button onClick={() => setSelectedStudent(student)} className="text-sm font-semibold text-primary-600 hover:text-primary-800">Ver Reporte</button>
                                 </li>
                             ))}
