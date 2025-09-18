@@ -91,7 +91,7 @@ const EvaluationManager: React.FC<{
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
+    <div className="bg-white p-6 rounded-2xl shadow-lg">
         <h2 className="text-2xl font-bold mb-4">Criterios de Evaluación</h2>
         <div className="mb-4">
             <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -188,7 +188,7 @@ const AssignmentManager: React.FC<{
     };
     
     return (
-         <div className="bg-white p-6 rounded-2xl shadow-lg mb-8">
+         <div className="bg-white p-6 rounded-2xl shadow-lg">
             <h2 className="text-2xl font-bold mb-4">Actividades</h2>
              {availableCriteria.length === 0 ? <p className="text-gray-500">Primero debes añadir al menos un criterio de evaluación de tipo "Actividades/Exámenes".</p> : (
                  <>
@@ -594,30 +594,57 @@ const SubjectDetail: React.FC = () => {
 
             {/* Evaluation Pane */}
             <DetailPane title="Evaluación y Estudiantes" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
-                <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
-                <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
-                {criteria.length > 0 && (
-                    <div className="bg-white p-6 rounded-2xl shadow-lg">
-                        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
-                            <h2 className="text-2xl font-bold">Estudiantes ({students.length})</h2>
-                             <div className="flex gap-2 flex-wrap justify-start sm:justify-end">
-                                <button onClick={() => setIsAddStudentsModalOpen(true)} className="inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"> <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /> </svg> Añadir Estudiantes </button>
-                                {students.length > 0 && ( <button onClick={() => setShowAllQRs(true)} className="inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}> <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /> </svg> Ver todos los QR </button> )}
-                            </div>
-                        </div>
-                        <ul className="divide-y divide-gray-200">
-                            {students.map(student => (
-                                <li key={student.id} className="py-3 px-2 flex justify-between items-center hover:bg-gray-50 rounded-md">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-gray-800 font-medium">{student.name}</span>
-                                        {studentsWithPendingAssignments.has(student.id) && ( <div title="Tiene actividades pendientes de calificar"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor"> <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /> </svg> </div> )}
-                                    </div>
-                                    <button onClick={() => setSelectedStudent(student)} className="text-sm font-semibold text-primary-600 hover:text-primary-800">Ver Reporte</button>
-                                </li>
-                            ))}
-                        </ul>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-2 space-y-8">
+                        <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
+                        <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
                     </div>
-                )}
+
+                    <div className="lg:col-span-1 lg:sticky top-6">
+                        {criteria.length > 0 ? (
+                            <div className="bg-white p-6 rounded-2xl shadow-lg">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Estudiantes ({students.length})</h2>
+                                <div className="flex flex-col gap-2 mb-4">
+                                    <button onClick={() => setIsAddStudentsModalOpen(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                                        Añadir Estudiantes
+                                    </button>
+                                    {students.length > 0 && (
+                                        <button onClick={() => setShowAllQRs(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /></svg>
+                                            Ver todos los QR
+                                        </button>
+                                    )}
+                                </div>
+                                <ul className="space-y-2 max-h-[calc(100vh-420px)] overflow-y-auto pr-2 -mr-2">
+                                    {students.map(student => (
+                                        <li key={student.id} onClick={() => setSelectedStudent(student)} className="p-3 flex justify-between items-center bg-gray-50 rounded-lg cursor-pointer hover:bg-primary-100 hover:shadow-md transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-full bg-primary-200 text-primary-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                                    {student.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                                </div>
+                                                <span className="font-medium text-gray-800 text-sm">{student.name}</span>
+                                            </div>
+                                            {studentsWithPendingAssignments.has(student.id) && (
+                                                <div title="Tiene actividades pendientes de calificar" className="flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="bg-white p-6 rounded-2xl shadow-lg text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <h3 className="mt-2 text-sm font-medium text-gray-900">Sin Estudiantes</h3>
+                                <p className="mt-1 text-sm text-gray-500">Primero define los criterios de evaluación y luego añade estudiantes.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </DetailPane>
 
             {/* Planner Pane */}
