@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -347,18 +348,20 @@ const DetailPane: React.FC<{
   children: React.ReactNode;
 }> = ({ title, active, onBack, children }) => {
   return (
-    <div className={`absolute top-0 left-0 w-full h-full bg-slate-100 p-0 md:p-6 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="mb-6 flex items-center gap-4">
-            <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                 Volver al Panel
-            </button>
-            <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
-        </div>
-        <div className="overflow-y-auto" style={{maxHeight: 'calc(100vh - 200px)'}}>
-            {children}
+    <div className={`fixed inset-0 bg-slate-100 z-30 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+        <div className="h-full w-full flex flex-col p-6 md:p-10">
+            <div className="mb-6 flex items-center gap-4 flex-shrink-0">
+                <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                     Volver al Panel
+                </button>
+                <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
+            </div>
+            <div className="overflow-y-auto flex-grow">
+                {children}
+            </div>
         </div>
     </div>
   );
@@ -536,7 +539,7 @@ const SubjectDetail: React.FC = () => {
         
         <div className="mb-8"> <ScheduleInfo subject={subject} onEdit={() => setIsScheduleModalOpen(true)} /> </div>
 
-        <div className="relative min-h-[500px] overflow-hidden">
+        <div className="relative">
             {/* Hub View */}
             <div className={`transition-all duration-300 ease-in-out ${activeView !== 'hub' ? 'opacity-0 -translate-x-full absolute' : 'opacity-100 translate-x-0'}`}>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
