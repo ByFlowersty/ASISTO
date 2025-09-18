@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -348,7 +347,7 @@ const DetailPane: React.FC<{
   children: React.ReactNode;
 }> = ({ title, active, onBack, children }) => {
   return (
-    <div className={`fixed inset-0 bg-slate-100 z-30 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+    <div className={`fixed inset-0 bg-slate-100 z-40 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
         <div className="h-full w-full flex flex-col p-6 md:p-10">
             <div className="mb-6 flex items-center gap-4 flex-shrink-0">
                 <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
