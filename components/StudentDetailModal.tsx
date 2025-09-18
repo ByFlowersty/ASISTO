@@ -149,24 +149,33 @@ const StudentDetailModal: React.FC<Props> = ({ student, subjectName, criteria, a
                             <tbody>
                                 {gradeSummary.details.map((detail, index) => (
                                     <React.Fragment key={index}>
-                                        {detail.assignments.length > 0 ? detail.assignments.map((ag, agIndex) => (
-                                            <tr key={`${index}-${agIndex}`} className="bg-white border-b hover:bg-gray-50">
-                                                {agIndex === 0 && (
-                                                    <td rowSpan={detail.assignments.length} className="px-6 py-4 font-medium text-gray-900 border-r align-top">
-                                                    {detail.criterionName} ({detail.percentage}%)
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4">
-                                                    {ag.assignmentName}
-                                                    {detail.criterionType === 'attendance' && (
-                                                        <button onClick={() => setShowAttendanceDetailModal(true)} className="ml-2 text-xs font-semibold text-blue-600 hover:underline">(Ver detalle)</button>
+                                        {detail.assignments.length > 0 ? detail.assignments.map((ag, agIndex) => {
+                                            const contribution = ((ag.score ?? 0) / 10) * (detail.percentage / detail.assignments.length);
+
+                                            return (
+                                                <tr key={`${index}-${agIndex}`} className="bg-white border-b hover:bg-gray-50">
+                                                    {agIndex === 0 && (
+                                                        <td rowSpan={detail.assignments.length} className="px-6 py-4 font-medium text-gray-900 border-r align-top">
+                                                        {detail.criterionName} ({detail.percentage}%)
+                                                        </td>
                                                     )}
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-bold text-lg">
-                                                    {ag.score !== null ? ag.score.toFixed(1) : '-'}
-                                                </td>
-                                            </tr>
-                                        )) : (
+                                                    <td className="px-6 py-4">
+                                                        {ag.assignmentName}
+                                                        {detail.criterionType === 'attendance' && (
+                                                            <button onClick={() => setShowAttendanceDetailModal(true)} className="ml-2 text-xs font-semibold text-blue-600 hover:underline">(Ver detalle)</button>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="font-bold text-lg text-gray-800">
+                                                            {ag.score !== null ? ag.score.toFixed(1) : '-'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 font-medium">
+                                                            Aporta <span className="font-bold text-primary-600">{contribution.toFixed(2)}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }) : (
                                             <tr className="bg-white border-b">
                                                 <td className="px-6 py-4 font-medium text-gray-900 border-r">{detail.criterionName} ({detail.percentage}%)</td>
                                                 <td colSpan={2} className="px-6 py-4 text-gray-400 italic">No hay actividades para este criterio.</td>
