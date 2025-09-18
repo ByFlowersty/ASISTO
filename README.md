@@ -1,15 +1,13 @@
-<div align="center">
-  <img 
-    src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExc3Fkb3Z3dzJ4ZjRncnBtZXdjeGRmamFzdndkMjl6YngxMGIzZzhoYiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/EwwHX78xRXN0o2ncPm/giphy.gif" 
-    alt="Gif animado" 
-    width="300" 
-  />
-</div>
+<p align="center">
+  <a href="https://giphy.com/gifs/kpop-eunchae-hong-EwwHX78xRXN0o2ncPm">
+    <img src="https://media.giphy.com/media/EwwHX78xRXN0o2ncPm/giphy.gif" width="300" alt="Gif animado"/>
+  </a>
+</p>
 
 # ASISTO
 
 Aplicación desarrollada con **Vite + React + TypeScript**.  
-Powered By Cynosure
+Integra Gemini AI para generación de contenido.
 
 ---
 
@@ -21,3 +19,27 @@ Powered By Cynosure
    ```bash
    git clone https://github.com/TU-USUARIO/ASISTO.git
    cd ASISTO
+
+2. Instala dependencias:
+
+npm install
+
+
+Configura tu API Key de Gemini en un archivo .env.local:
+
+GEMINI_API_KEY=tu_api_key_aqui
+
+
+3. Ejecuta la aplicación:
+
+npm run dev
+
+📦 Tecnologías utilizadas
+
+React
+
+Vite
+
+TypeScript
+
+Supabase
