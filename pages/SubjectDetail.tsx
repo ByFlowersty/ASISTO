@@ -207,7 +207,7 @@ const AssignmentManager: React.FC<{
                              <li key={a.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                  <div>
                                     <span className="font-medium">{a.name}</span>
-                                    <p className="text-xs text-gray-500">{criteria.find(c=>c.id === a.evaluation_criterion_id)?.name}</p>
+                                    <p className="text-xs text-gray-500">{criteria.find(c=>c.id === a.evaluation_criterion_id)?.name} &bull; Creado el: {new Date(a.created_at).toLocaleDateString('es-ES')}</p>
                                  </div>
                                  <button onClick={() => navigate(`/grade/${a.id}`)} className="px-3 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600">Calificar con QR</button>
                              </li>
