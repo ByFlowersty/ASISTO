@@ -338,6 +338,33 @@ const ParticipationManager: React.FC<{
 
 
 // --- Componente Principal ---
+type View = 'hub' | 'evaluation' | 'planner' | 'participations' | 'attendance';
+
+const DetailPane: React.FC<{
+  title: string;
+  active: boolean;
+  onBack: () => void;
+  children: React.ReactNode;
+}> = ({ title, active, onBack, children }) => {
+  return (
+    <div className={`absolute top-0 left-0 w-full h-full bg-slate-100 p-0 md:p-6 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="mb-6 flex items-center gap-4">
+            <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                 Volver al Panel
+            </button>
+            <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
+        </div>
+        <div className="overflow-y-auto" style={{maxHeight: 'calc(100vh - 200px)'}}>
+            {children}
+        </div>
+    </div>
+  );
+};
+
+
 const SubjectDetail: React.FC = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
@@ -353,7 +380,7 @@ const SubjectDetail: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'attendance' | 'participations' | 'planner'>('general');
+  const [activeView, setActiveView] = useState<View>('hub');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAllQRs, setShowAllQRs] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -385,13 +412,11 @@ const SubjectDetail: React.FC = () => {
         supabase.from('planned_classes').select('*').eq('subject_id', subjectId).order('class_date'),
       ]);
 
-      // Check for errors in parallel fetches
       const responses = { subjectRes, studentsRes, attendanceRes, criteriaRes, assignmentsRes, gradesRes, plannedClassesRes };
       for (const [key, res] of Object.entries(responses)) {
         if (res.error) throw new Error(`Error fetching ${key}: ${res.error.message}`);
       }
       
-      // Set all states
       setSubject(subjectRes.data);
       setStudents(studentsRes.data || []);
       setAttendance((attendanceRes.data as any) || []);
@@ -400,15 +425,10 @@ const SubjectDetail: React.FC = () => {
       setGrades(gradesRes.data || []);
       setPlannedClasses(plannedClassesRes.data || []);
 
-      // Fetch participations separately to handle missing table gracefully
       const participationsRes = await supabase.from('participations').select('*').eq('subject_id', subjectId);
       
       if (participationsRes.error) {
-          console.warn(
-              "Error al cargar participaciones. La funcionalidad de participaciones está deshabilitada. " +
-              "Esto es esperado si la tabla 'participations' aún no ha sido creada en la base de datos.",
-              participationsRes.error
-          );
+          console.warn( "Error al cargar participaciones. La funcionalidad de participaciones está deshabilitada.", participationsRes.error );
           setParticipations([]);
           setParticipationsFeatureEnabled(false);
       } else {
@@ -428,105 +448,28 @@ const SubjectDetail: React.FC = () => {
   }, [fetchData]);
 
   const scheduledSessionDates = useMemo(() => {
-    if (!subject?.schedule || subject.schedule.length === 0) {
-        return [];
-    }
+    if (!subject?.schedule || subject.schedule.length === 0) return [];
     
-    const schoolEvents = [
-        { title: 'Inicio de semestre', type: 'event', date: '2025-09-01' },
-        { title: 'Suspensión de clases', type: 'holiday', date: '2025-09-16' },
-        { title: 'Efemerides', type: 'event', date: '2025-10-01' },
-        { title: 'Aplicación de exámenes 1er parcial', type: 'exam', start: '2025-10-06', end: '2025-10-08' },
-        { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-10-11', end: '2025-10-12' },
-        { title: 'Entrega de calif. 1er parcial', type: 'grades', date: '2025-10-17' },
-        { title: 'Aplicación de exámenes 2do parcial', type: 'exam', start: '2025-11-03', end: '2025-11-05' },
-        { title: 'Efemerides', type: 'event', date: '2025-11-06' },
-        { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-11-11', end: '2025-11-12' },
-        { title: 'Entrega de calif. 2do parcial', type: 'grades', date: '2025-11-14' },
-        { title: 'Suspensión de clases', type: 'holiday', date: '2025-11-17' },
-        { title: 'Semana de conferencias', type: 'event', start: '2025-12-01', end: '2025-12-05' },
-        { title: 'Aplicación de exámenes 3er parcial', type: 'exam', start: '2025-12-03', end: '2025-12-05' },
-        { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-12-08', end: '2025-12-09' },
-        { title: 'Entrega de calif. 3er parcial', type: 'grades', date: '2025-12-12' },
-        { title: 'Efemerides', type: 'event', date: '2025-12-16' },
-        { title: 'Aplicación de exámenes 4o parcial', type: 'exam', start: '2025-12-17', end: '2025-12-19' },
-        { title: 'Fin de Semestre', type: 'event', date: '2025-12-19' },
-        { title: 'Periodo Vacacional', type: 'vacation', start: '2025-12-19', end: '2026-02-03' },
-        { title: 'Exámenes Extemporáneos', type: 'exam', start: '2026-01-05', end: '2026-01-06' },
-        { title: 'Entrega de calif. Finales', type: 'grades', date: '2026-01-09' },
-        { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-16' },
-        { title: 'Recursamiento de Materias', type: 'event', date: '2026-01-19' },
-        { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-23' },
-        { title: 'Inicio de Semestre', type: 'event', date: '2026-02-04' },
-    ];
-
+    const schoolEvents = [ { title: 'Inicio de semestre', type: 'event', date: '2025-09-01' }, { title: 'Suspensión de clases', type: 'holiday', date: '2025-09-16' }, { title: 'Efemerides', type: 'event', date: '2025-10-01' }, { title: 'Aplicación de exámenes 1er parcial', type: 'exam', start: '2025-10-06', end: '2025-10-08' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-10-11', end: '2025-10-12' }, { title: 'Entrega de calif. 1er parcial', type: 'grades', date: '2025-10-17' }, { title: 'Aplicación de exámenes 2do parcial', type: 'exam', start: '2025-11-03', end: '2025-11-05' }, { title: 'Efemerides', type: 'event', date: '2025-11-06' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-11-11', end: '2025-11-12' }, { title: 'Entrega de calif. 2do parcial', type: 'grades', date: '2025-11-14' }, { title: 'Suspensión de clases', type: 'holiday', date: '2025-11-17' }, { title: 'Semana de conferencias', type: 'event', start: '2025-12-01', end: '2025-12-05' }, { title: 'Aplicación de exámenes 3er parcial', type: 'exam', start: '2025-12-03', end: '2025-12-05' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-12-08', end: '2025-12-09' }, { title: 'Entrega de calif. 3er parcial', type: 'grades', date: '2025-12-12' }, { title: 'Efemerides', type: 'event', date: '2025-12-16' }, { title: 'Aplicación de exámenes 4o parcial', type: 'exam', start: '2025-12-17', end: '2025-12-19' }, { title: 'Fin de Semestre', type: 'event', date: '2025-12-19' }, { title: 'Periodo Vacacional', type: 'vacation', start: '2025-12-19', end: '2026-02-03' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2026-01-05', end: '2026-01-06' }, { title: 'Entrega de calif. Finales', type: 'grades', date: '2026-01-09' }, { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-16' }, { title: 'Recursamiento de Materias', type: 'event', date: '2026-01-19' }, { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-23' }, { title: 'Inicio de Semestre', type: 'event', date: '2026-02-04' }, ];
     const eventMap = new Map();
-    schoolEvents.forEach(event => {
-        if ('date' in event && event.date) {
-            eventMap.set(event.date, event);
-        } else if ('start' in event && 'end' in event && event.start && event.end) {
-            let currentDate = new Date(event.start + 'T12:00:00Z');
-            let endDate = new Date(event.end + 'T12:00:00Z');
-            while (currentDate <= endDate) {
-                const dateString = currentDate.toISOString().split('T')[0];
-                eventMap.set(dateString, event);
-                currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-            }
-        }
-    });
-
+    schoolEvents.forEach(event => { if ('date' in event && event.date) { eventMap.set(event.date, event); } else if ('start' in event && 'end' in event && event.start && event.end) { let currentDate = new Date(event.start + 'T12:00:00Z'); let endDate = new Date(event.end + 'T12:00:00Z'); while (currentDate <= endDate) { const dateString = currentDate.toISOString().split('T')[0]; eventMap.set(dateString, event); currentDate.setUTCDate(currentDate.getUTCDate() + 1); } } });
     const dates: string[] = [];
     const scheduleDays = subject.schedule.map(s => s.day);
     const semesterStart = new Date('2025-09-01T00:00:00Z');
     const today = new Date();
-    
     let current = new Date(semesterStart.getTime());
-
-    while(current <= today) {
-        const currentDayOfWeek = current.getUTCDay() === 0 ? 7 : current.getUTCDay();
-        if (scheduleDays.includes(currentDayOfWeek)) {
-            const dateString = current.toISOString().split('T')[0];
-            const event = eventMap.get(dateString);
-            const isNonLectiveDay = event && (event.type === 'holiday' || event.type === 'vacation');
-            
-            if (!isNonLectiveDay) {
-                dates.push(dateString);
-            }
-        }
-        current.setUTCDate(current.getUTCDate() + 1);
-    }
+    while(current <= today) { const currentDayOfWeek = current.getUTCDay() === 0 ? 7 : current.getUTCDay(); if (scheduleDays.includes(currentDayOfWeek)) { const dateString = current.toISOString().split('T')[0]; const event = eventMap.get(dateString); const isNonLectiveDay = event && (event.type === 'holiday' || event.type === 'vacation'); if (!isNonLectiveDay) { dates.push(dateString); } } current.setUTCDate(current.getUTCDate() + 1); }
     return dates;
   }, [subject]);
   
     const studentsWithPendingAssignments = useMemo(() => {
-        const defaultCriteriaIds = new Set(
-            criteria.filter(c => c.type === 'default').map(c => c.id)
-        );
-
+        const defaultCriteriaIds = new Set( criteria.filter(c => c.type === 'default').map(c => c.id) );
         const gradableAssignments = assignments.filter(a => defaultCriteriaIds.has(a.evaluation_criterion_id));
-
-        if (gradableAssignments.length === 0) {
-            return new Set<string>();
-        }
-
+        if (gradableAssignments.length === 0) return new Set<string>();
         const studentGradedAssignments = new Map<string, Set<string>>();
-        grades.forEach(grade => {
-            if (!studentGradedAssignments.has(grade.student_id)) {
-                studentGradedAssignments.set(grade.student_id, new Set());
-            }
-            studentGradedAssignments.get(grade.student_id)!.add(grade.assignment_id);
-        });
-
+        grades.forEach(grade => { if (!studentGradedAssignments.has(grade.student_id)) { studentGradedAssignments.set(grade.student_id, new Set()); } studentGradedAssignments.get(grade.student_id)!.add(grade.assignment_id); });
         const pendingStudents = new Set<string>();
-        students.forEach(student => {
-            const gradedAssignmentIds = studentGradedAssignments.get(student.id) || new Set();
-            const hasMissingAssignment = gradableAssignments.some(assignment => !gradedAssignmentIds.has(assignment.id));
-            
-            if (hasMissingAssignment) {
-                pendingStudents.add(student.id);
-            }
-        });
-
+        students.forEach(student => { const gradedAssignmentIds = studentGradedAssignments.get(student.id) || new Set(); const hasMissingAssignment = gradableAssignments.some(assignment => !gradedAssignmentIds.has(assignment.id)); if (hasMissingAssignment) { pendingStudents.add(student.id); } });
         return pendingStudents;
     }, [students, assignments, grades, criteria]);
 
@@ -543,11 +486,8 @@ const SubjectDetail: React.FC = () => {
 
   const handleRequestManualAttendance = (date: Date) => {
     const isVerified = sessionStorage.getItem('manualAttendanceVerified') === 'true';
-    if (isVerified) {
-        setManualAttendanceDate(date);
-    } else {
-        setVerifyingPasswordForDate(date);
-    }
+    if (isVerified) { setManualAttendanceDate(date); } 
+    else { setVerifyingPasswordForDate(date); }
   };
 
   const handlePasswordSuccess = () => {
@@ -566,43 +506,16 @@ const SubjectDetail: React.FC = () => {
   if (error) return <p className="text-center text-red-500 mt-8">{error}</p>;
   if (!subject) return <p className="text-center text-gray-500 mt-8">Materia no encontrada.</p>;
 
+  const totalPercentage = criteria.reduce((sum, crit) => sum + crit.percentage, 0);
+
   return (
     <div>
-        {selectedStudent && <StudentDetailModal 
-            student={selectedStudent} 
-            subjectName={subject.name}
-            criteria={criteria}
-            assignments={assignments}
-            grades={grades.filter(g => g.student_id === selectedStudent.id)}
-            allAttendance={attendance}
-            participations={participations.filter(p => p.student_id === selectedStudent.id)}
-            scheduledSessionDates={scheduledSessionDates}
-            onClose={() => setSelectedStudent(null)} 
-        />}
-
+        {selectedStudent && <StudentDetailModal student={selectedStudent} subjectName={subject.name} criteria={criteria} assignments={assignments} grades={grades.filter(g => g.student_id === selectedStudent.id)} allAttendance={attendance} participations={participations.filter(p => p.student_id === selectedStudent.id)} scheduledSessionDates={scheduledSessionDates} onClose={() => setSelectedStudent(null)} />}
         {showAllQRs && <AllStudentsQRModal students={students} subjectName={subject.name} onClose={() => setShowAllQRs(false)} />}
-        {isAddStudentsModalOpen && (
-            <AddStudentsModal 
-                subjectId={subjectId!} 
-                onClose={() => setIsAddStudentsModalOpen(false)}
-                onSave={() => {
-                    fetchData();
-                    setIsAddStudentsModalOpen(false);
-                }}
-            />
-        )}
+        {isAddStudentsModalOpen && <AddStudentsModal subjectId={subjectId!} onClose={() => setIsAddStudentsModalOpen(false)} onSave={() => { fetchData(); setIsAddStudentsModalOpen(false); }} />}
         {verifyingPasswordForDate && <PasswordPromptModal onSuccess={handlePasswordSuccess} onClose={() => setVerifyingPasswordForDate(null)} />}
         {isScheduleModalOpen && <ScheduleModal subject={subject} onClose={() => setIsScheduleModalOpen(false)} onSave={fetchData} />}
-
-        {manualAttendanceDate && (
-            <ManualAttendanceModal
-                date={manualAttendanceDate}
-                students={students}
-                subjectId={subjectId!}
-                onClose={() => setManualAttendanceDate(null)}
-                onSave={handleSaveManualAttendance}
-            />
-        )}
+        {manualAttendanceDate && <ManualAttendanceModal date={manualAttendanceDate} students={students} subjectId={subjectId!} onClose={() => setManualAttendanceDate(null)} onSave={handleSaveManualAttendance} />}
 
         <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
             <div>
@@ -611,74 +524,85 @@ const SubjectDetail: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => navigate(`/subject/${subjectId}/rollcall`)} className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                        <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" /></svg>
                     Pasar Lista
                 </button>
                 <button onClick={startAttendanceSession} className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
                     Asistencia con QR
                 </button>
             </div>
         </div>
         
-        <div className="mb-8">
-            <ScheduleInfo subject={subject} onEdit={() => setIsScheduleModalOpen(true)} />
-        </div>
+        <div className="mb-8"> <ScheduleInfo subject={subject} onEdit={() => setIsScheduleModalOpen(true)} /> </div>
 
-        <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                <button onClick={() => setActiveTab('general')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'general' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    Evaluación y Estudiantes
-                </button>
-                 <button onClick={() => setActiveTab('planner')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'planner' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    Planificador
-                </button>
-                {participationsFeatureEnabled && (
-                  <button onClick={() => setActiveTab('participations')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'participations' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                      Participaciones
-                  </button>
-                )}
-                <button onClick={() => setActiveTab('attendance')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'attendance' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                    Registro de Asistencia
-                </button>
-            </nav>
-        </div>
+        <div className="relative min-h-[500px] overflow-hidden">
+            {/* Hub View */}
+            <div className={`transition-all duration-300 ease-in-out ${activeView !== 'hub' ? 'opacity-0 -translate-x-full absolute' : 'opacity-100 translate-x-0'}`}>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Card 1: Evaluation */}
+                    <div onClick={() => setActiveView('evaluation')} className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-primary-100 text-primary-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Evaluación y Estudiantes</h3>
+                        <p className="mt-1 text-sm text-gray-500">{students.length} Estudiantes &bull; {totalPercentage}% Cubierto</p>
+                        <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Gestionar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
 
-        {activeTab === 'general' && (
-            <div>
+                    {/* Card 2: Planner */}
+                    <div onClick={() => setActiveView('planner')} className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-cyan-100 text-cyan-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Planificador de Clases</h3>
+                        <p className="mt-1 text-sm text-gray-500">{plannedClasses.length} clases planificadas</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Planificar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+
+                    {/* Card 3: Participations */}
+                    {participationsFeatureEnabled && (
+                    <div onClick={() => setActiveView('participations')} className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                         <div className="bg-amber-100 text-amber-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Participaciones</h3>
+                        <p className="mt-1 text-sm text-gray-500">{participations.length} participaciones registradas</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Registrar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+                    )}
+                    
+                    {/* Card 4: Attendance */}
+                    <div onClick={() => setActiveView('attendance')} className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-green-100 text-green-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Asistencia</h3>
+                        <p className="mt-1 text-sm text-gray-500">{scheduledSessionDates.length} sesiones de clase hasta hoy</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Consultar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+                 </div>
+            </div>
+
+            {/* Evaluation Pane */}
+            <DetailPane title="Evaluación y Estudiantes" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
                 <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
                 <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
-                
                 {criteria.length > 0 && (
                     <div className="bg-white p-6 rounded-2xl shadow-lg">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
                             <h2 className="text-2xl font-bold">Estudiantes ({students.length})</h2>
                              <div className="flex gap-2 flex-wrap justify-start sm:justify-end">
-                                <button 
-                                    onClick={() => setIsAddStudentsModalOpen(true)}
-                                    className="inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75"
-                                >
-                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Añadir Estudiantes
-                                </button>
-                                {students.length > 0 && (
-                                    <button 
-                                        onClick={() => setShowAllQRs(true)}
-                                        className="inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
-                                        </svg>
-                                        Ver todos los QR
-                                    </button>
-                                )}
+                                <button onClick={() => setIsAddStudentsModalOpen(true)} className="inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"> <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /> </svg> Añadir Estudiantes </button>
+                                {students.length > 0 && ( <button onClick={() => setShowAllQRs(true)} className="inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}> <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /> </svg> Ver todos los QR </button> )}
                             </div>
                         </div>
                         <ul className="divide-y divide-gray-200">
@@ -686,13 +610,7 @@ const SubjectDetail: React.FC = () => {
                                 <li key={student.id} className="py-3 px-2 flex justify-between items-center hover:bg-gray-50 rounded-md">
                                     <div className="flex items-center gap-2">
                                         <span className="text-gray-800 font-medium">{student.name}</span>
-                                        {studentsWithPendingAssignments.has(student.id) && (
-                                            <div title="Tiene actividades pendientes de calificar">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        )}
+                                        {studentsWithPendingAssignments.has(student.id) && ( <div title="Tiene actividades pendientes de calificar"> <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor"> <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /> </svg> </div> )}
                                     </div>
                                     <button onClick={() => setSelectedStudent(student)} className="text-sm font-semibold text-primary-600 hover:text-primary-800">Ver Reporte</button>
                                 </li>
@@ -700,36 +618,28 @@ const SubjectDetail: React.FC = () => {
                         </ul>
                     </div>
                 )}
-            </div>
-        )}
+            </DetailPane>
 
-        {activeTab === 'planner' && (
-            <PlannerManager 
-                subject={subject}
-                plannedClasses={plannedClasses}
-                onDataChange={fetchData}
-            />
-        )}
-        
-        {activeTab === 'participations' && participationsFeatureEnabled && (
-            <ParticipationManager 
-                subjectId={subjectId!}
-                students={students}
-                participations={participations}
-                onParticipationsChange={fetchData}
-            />
-        )}
-        
-        {activeTab === 'attendance' && (
-            <div className="bg-white p-6 rounded-2xl shadow-lg">
-                <AttendanceCalendar 
-                    subject={subject} 
-                    attendance={attendance} 
-                    students={students}
-                    onAddManualAttendance={handleRequestManualAttendance}
-                />
-            </div>
-        )}
+            {/* Planner Pane */}
+            <DetailPane title="Planificador de Clases" active={activeView === 'planner'} onBack={() => setActiveView('hub')}>
+                <PlannerManager subject={subject} plannedClasses={plannedClasses} onDataChange={fetchData} />
+            </DetailPane>
+
+            {/* Participations Pane */}
+            {participationsFeatureEnabled && (
+                <DetailPane title="Registro de Participaciones" active={activeView === 'participations'} onBack={() => setActiveView('hub')}>
+                    <ParticipationManager subjectId={subjectId!} students={students} participations={participations} onParticipationsChange={fetchData} />
+                </DetailPane>
+            )}
+
+            {/* Attendance Pane */}
+            <DetailPane title="Registro de Asistencia" active={activeView === 'attendance'} onBack={() => setActiveView('hub')}>
+                 <div className="bg-white p-6 rounded-2xl shadow-lg">
+                    <AttendanceCalendar subject={subject} attendance={attendance} students={students} onAddManualAttendance={handleRequestManualAttendance} />
+                </div>
+            </DetailPane>
+
+        </div>
     </div>
   );
 };
