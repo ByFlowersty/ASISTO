@@ -6,16 +6,18 @@
   />
 </div>
 
+# ASISTO
 
+Aplicación desarrollada con **Vite + React + TypeScript**.  
+Powered By Cynosure
 
+---
 
-## Run Locally
+## 🚀 Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** [Node.js](https://nodejs.org/)
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/TU-USUARIO/ASISTO.git
+   cd ASISTO
