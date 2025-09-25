@@ -1,67 +1,19 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { supabase } from '../services/supabase';
 import type { Student, Assignment } from '../types';
 
-const GradeModal: React.FC<{
-    student: Student;
-    assignment: Assignment;
-    onClose: () => void;
-    onGradeSubmit: (score: number) => Promise<void>;
-}> = ({ student, assignment, onClose, onGradeSubmit }) => {
-    const [score, setScore] = useState<number | ''>('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (score === '' || score < 0 || score > 10) {
-            alert("Por favor, introduce una calificación válida entre 0 y 10.");
-            return;
-        }
-        setIsSubmitting(true);
-        await onGradeSubmit(score);
-        setIsSubmitting(false);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl relative max-w-sm w-full">
-                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-                <h3 className="text-xl font-bold mb-2">{student.name}</h3>
-                <p className="text-sm text-gray-500 mb-4">Calificando: {assignment.name}</p>
-                <form onSubmit={handleSubmit}>
-                    <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="10"
-                        value={score}
-                        onChange={(e) => setScore(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full text-center text-2xl p-2 border-2 border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0-10"
-                        autoFocus
-                        required
-                    />
-                    <button type="submit" disabled={isSubmitting} className="w-full mt-4 px-4 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:bg-primary-300">
-                        {isSubmitting ? 'Guardando...' : 'Guardar Calificación'}
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-
 const GradeScanner: React.FC = () => {
     const { assignmentId } = useParams<{ assignmentId: string }>();
     const navigate = useNavigate();
     const [assignment, setAssignment] = useState<Assignment | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [scannedStudent, setScannedStudent] = useState<Student | null>(null);
+    
+    const [studentsToGrade, setStudentsToGrade] = useState<Student[]>([]);
+    const [grades, setGrades] = useState<Map<string, number | ''>>(new Map());
+    const [isSaving, setIsSaving] = useState(false);
+
     const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
     const scannerContainerId = "qr-reader";
 
@@ -87,96 +39,100 @@ const GradeScanner: React.FC = () => {
     const handleScan = useCallback(async (studentName: string) => {
         if (!assignment) return;
         
-        if (html5QrcodeRef.current?.isScanning) {
-            html5QrcodeRef.current.pause(true);
+        if (studentsToGrade.some(s => s.name === studentName)) {
+            setMessage({ type: 'error', text: `${studentName} ya está en la lista.` });
+            setTimeout(() => setMessage(null), 2000);
+            return;
         }
         
         try {
             const { data: studentData, error: studentError } = await supabase.from('students').select('*').eq('name', studentName).eq('subject_id', assignment.subject_id).single();
             if (studentError || !studentData) {
-                setMessage({ type: 'error', text: `Estudiante "${studentName}" no encontrado en esta materia.` });
-                setTimeout(() => {
-                    setMessage(null);
-                    if (html5QrcodeRef.current) html5QrcodeRef.current.resume();
-                }, 2000);
+                setMessage({ type: 'error', text: `Estudiante "${studentName}" no encontrado.` });
             } else {
-                setScannedStudent(studentData);
+                setMessage({ type: 'success', text: `${studentData.name} añadido.` });
+                setStudentsToGrade(prev => [...prev, studentData].sort((a,b) => a.name.localeCompare(b.name)));
+                setGrades(prev => new Map(prev).set(studentData.id, ''));
             }
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message });
-             setTimeout(() => {
-                setMessage(null);
-                if (html5QrcodeRef.current) html5QrcodeRef.current.resume();
-            }, 2000);
         }
-    }, [assignment]);
+        setTimeout(() => setMessage(null), 2000);
+    }, [assignment, studentsToGrade]);
 
-    const handleGradeSubmit = async (score: number) => {
-        if (!scannedStudent || !assignment) return;
+    const handleGradeChange = (studentId: string, value: string) => {
+        const score = value === '' ? '' : parseFloat(value);
+        if (score === '' || (score >= 0 && score <= 10)) {
+            setGrades(prev => new Map(prev).set(studentId, score));
+        }
+    };
+
+    const removeStudent = (studentId: string) => {
+        setStudentsToGrade(prev => prev.filter(s => s.id !== studentId));
+        setGrades(prev => {
+            const newGrades = new Map(prev);
+            newGrades.delete(studentId);
+            return newGrades;
+        });
+    };
+
+    const handleSaveAllGrades = async () => {
+        if (!assignment || studentsToGrade.length === 0) return;
+
+        setIsSaving(true);
+        const gradesToUpsert = Array.from(grades.entries())
+            .filter(([, score]) => score !== '')
+            .map(([studentId, score]) => ({
+                student_id: studentId,
+                assignment_id: assignment.id,
+                subject_id: assignment.subject_id,
+                score: score as number,
+            }));
         
-        const { error } = await supabase.from('grades').upsert({
-            student_id: scannedStudent.id,
-            assignment_id: assignment.id,
-            subject_id: assignment.subject_id,
-            score: score
-        }, { onConflict: 'student_id, assignment_id' });
+        if (gradesToUpsert.length === 0) {
+            setMessage({ type: 'error', text: 'No hay calificaciones nuevas para guardar.' });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 2000);
+            return;
+        }
+
+        const { error } = await supabase.from('grades').upsert(gradesToUpsert, { onConflict: 'student_id, assignment_id' });
 
         if (error) {
-            setMessage({ type: 'error', text: 'Error al guardar la calificación: ' + error.message });
+            setMessage({ type: 'error', text: 'Error al guardar: ' + error.message });
         } else {
-            setMessage({ type: 'success', text: `Calificación ${score} guardada para ${scannedStudent.name}.` });
+            setMessage({ type: 'success', text: `${gradesToUpsert.length} calificaciones guardadas.` });
+            setTimeout(() => navigate(`/subject/${assignment.subject_id}`), 1500);
         }
-        setScannedStudent(null);
-        setTimeout(() => {
-            setMessage(null);
-            if (html5QrcodeRef.current) html5QrcodeRef.current.resume();
-        }, 2000);
+        setIsSaving(false);
     };
 
     useEffect(() => {
         if (!assignment) return;
-
         Html5Qrcode.getCameras()
-        .then(devices => {
-            if (devices && devices.length) {
-                setCameras(devices);
-                const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera'));
-                setActiveCameraId(backCamera ? backCamera.id : devices[0].id);
-            }
-        })
-        .catch(err => {
-            console.error("Could not get cameras", err);
-            setMessage({ type: 'error', text: 'No se pudo acceder a la cámara.' });
-        });
+            .then(devices => {
+                if (devices && devices.length) {
+                    setCameras(devices);
+                    const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera'));
+                    setActiveCameraId(backCamera ? backCamera.id : devices[0].id);
+                }
+            })
+            .catch(err => {
+                console.error("Could not get cameras", err);
+                setMessage({ type: 'error', text: 'No se pudo acceder a la cámara.' });
+            });
     }, [assignment]);
 
     useEffect(() => {
         if (!activeCameraId) return;
-
         const qrcode = new Html5Qrcode(scannerContainerId);
         html5QrcodeRef.current = qrcode;
-
-        const config: Html5QrcodeCameraScanConfig = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
-        
-        qrcode.start(
-            activeCameraId,
-            config,
-            handleScan,
-            undefined
-        ).catch(err => {
-            console.error("Failed to start scanner", err);
-            setMessage({ type: 'error', text: 'No se pudo iniciar el escáner.' });
-        });
-
+        const config: Html5QrcodeCameraScanConfig = { fps: 5, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+        qrcode.start(activeCameraId, config, handleScan, undefined)
+            .catch(err => setMessage({ type: 'error', text: 'No se pudo iniciar el escáner.' }));
         return () => {
-            if (html5QrcodeRef.current) {
-                html5QrcodeRef.current.stop().catch(error => {
-                    console.log("Scanner stop failed on cleanup, this is expected in some cases.", error);
-                });
+            if (html5QrcodeRef.current?.isScanning) {
+                html5QrcodeRef.current.stop().catch(error => console.log("Scanner stop failed on cleanup.", error));
             }
         };
     }, [activeCameraId, handleScan]);
@@ -191,34 +147,19 @@ const GradeScanner: React.FC = () => {
     if (!assignment) {
         return <p className="text-center mt-8">{message ? message.text : "Cargando actividad..."}</p>;
     }
+    
+    const validGradesCount = Array.from(grades.values()).filter(g => g !== '').length;
 
     return (
-        <div className="max-w-xl mx-auto text-center">
-            {scannedStudent && (
-                <GradeModal 
-                    student={scannedStudent} 
-                    assignment={assignment}
-                    onClose={() => {
-                        setScannedStudent(null);
-                        if (html5QrcodeRef.current) html5QrcodeRef.current.resume();
-                    }} 
-                    onGradeSubmit={handleGradeSubmit}
-                />
-            )}
+        <div className="max-w-2xl mx-auto text-center">
             <h1 className="text-3xl font-bold mb-2">Calificar Actividad</h1>
             <p className="text-xl text-gray-700 mb-6">{assignment.name}</p>
 
             <div className="relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-lg border-4 border-white bg-gray-800 aspect-square">
                 <div id={scannerContainerId} className="w-full h-full"></div>
                 {cameras.length > 1 && (
-                    <button 
-                        onClick={handleCameraSwitch} 
-                        className="absolute bottom-4 right-4 bg-black bg-opacity-40 text-white p-3 rounded-full hover:bg-opacity-60 transition-all z-10 focus:outline-none focus:ring-2 focus:ring-white"
-                        aria-label="Cambiar cámara"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5m-5 2a9 9 0 0015.55 5.55M20 20v-5h-5m5-2a9 9 0 00-15.55-5.55" />
-                        </svg>
+                    <button onClick={handleCameraSwitch} className="absolute bottom-4 right-4 bg-black bg-opacity-40 text-white p-3 rounded-full hover:bg-opacity-60 transition-all z-10 focus:outline-none focus:ring-2 focus:ring-white" aria-label="Cambiar cámara">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5m-5 2a9 9 0 0015.55 5.55M20 20v-5h-5m5-2a9 9 0 00-15.55-5.55" /></svg>
                     </button>
                 )}
             </div>
@@ -228,9 +169,46 @@ const GradeScanner: React.FC = () => {
                     {message.text}
                 </div>
             )}
-            <button onClick={() => navigate(-1)} className="mt-8 px-8 py-3 bg-primary-600 text-white font-semibold rounded-xl shadow-md hover:bg-primary-700">
-                Volver a la Materia
-            </button>
+
+            {studentsToGrade.length > 0 && (
+                <div className="mt-8 text-left">
+                    <h2 className="text-2xl font-bold mb-4">Estudiantes Escaneados</h2>
+                    <div className="space-y-3 max-h-[40vh] overflow-y-auto p-1 pr-3 bg-white rounded-2xl shadow-lg">
+                        {studentsToGrade.map(student => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
+                                <span className="font-medium text-gray-800 flex-grow">{student.name}</span>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="10"
+                                        value={grades.get(student.id) ?? ''}
+                                        onChange={(e) => handleGradeChange(student.id, e.target.value)}
+                                        className="w-24 p-2 border border-gray-300 rounded-lg text-center focus:ring-primary-500 focus:border-primary-500"
+                                        placeholder="0-10"
+                                        aria-label={`Calificación para ${student.name}`}
+                                    />
+                                    <button onClick={() => removeStudent(student.id)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100" aria-label={`Quitar a ${student.name}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-8 flex justify-end gap-4">
+                <button onClick={() => navigate(-1)} className="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-300">
+                    Volver
+                </button>
+                 {studentsToGrade.length > 0 && (
+                    <button onClick={handleSaveAllGrades} disabled={isSaving || validGradesCount === 0} className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        {isSaving ? 'Guardando...' : `Guardar (${validGradesCount})`}
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
