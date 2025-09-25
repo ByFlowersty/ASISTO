@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { HashRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import AddSubject from './pages/AddSubject';
@@ -6,7 +7,7 @@ import SubjectDetail from './pages/SubjectDetail';
 import ScanAttendance from './pages/ScanAttendance';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import GradeScanner from './pages/GradeScanner';
+import MultiGradeScanner from './pages/MultiGradeScanner';
 import RollCall from './pages/RollCall';
 
 const ProtectedLayout = () => {
@@ -35,7 +36,7 @@ function App() {
           <Route path="/subject/:subjectId" element={<SubjectDetail />} />
           <Route path="/subject/:subjectId/rollcall" element={<RollCall />} />
           <Route path="/scan/:sessionId" element={<ScanAttendance />} />
-          <Route path="/grade/:assignmentId" element={<GradeScanner />} />
+          <Route path="/subject/:subjectId/multi-grade" element={<MultiGradeScanner />} />
           {/* Redirige cualquier otra ruta al panel de control cuando se ha iniciado sesión */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
