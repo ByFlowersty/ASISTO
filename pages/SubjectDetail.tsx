@@ -161,7 +161,6 @@ const AssignmentManager: React.FC<{
     criteria: EvaluationCriterion[];
     onAssignmentsChange: () => void;
 }> = ({ subjectId, assignments, criteria, onAssignmentsChange }) => {
-    const navigate = useNavigate();
     const [name, setName] = useState('');
     const [criterionId, setCriterionId] = useState('');
 
