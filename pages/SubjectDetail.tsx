@@ -208,7 +208,6 @@ const AssignmentManager: React.FC<{
                                     <span className="font-medium">{a.name}</span>
                                     <p className="text-xs text-gray-500">{criteria.find(c=>c.id === a.evaluation_criterion_id)?.name} &bull; Creado el: {new Date(a.created_at).toLocaleDateString('es-ES')}</p>
                                  </div>
-                                 <button onClick={() => navigate(`/grade/${a.id}`)} className="px-3 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600">Calificar con QR</button>
                              </li>
                          ))}
                      </ul>
@@ -610,6 +609,10 @@ const SubjectDetail: React.FC = () => {
                                     <button onClick={() => setIsAddStudentsModalOpen(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
                                         Añadir Estudiantes
+                                    </button>
+                                    <button onClick={() => navigate(`/subject/${subjectId}/multi-grade`)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-sm hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
+                                        Calificar Alumno con QR
                                     </button>
                                     {students.length > 0 && (
                                         <button onClick={() => setShowAllQRs(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
