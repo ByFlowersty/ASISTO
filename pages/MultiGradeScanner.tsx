@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { supabase } from '../services/supabase';
-import type { Student, Assignment, Grade } from '../types';
+import type { Student, Assignment } from '../types';
 
 const MultiGradeScanner: React.FC = () => {
     const { subjectId } = useParams<{ subjectId: string }>();
