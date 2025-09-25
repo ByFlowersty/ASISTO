@@ -129,7 +129,10 @@ const GradeScanner: React.FC = () => {
         html5QrcodeRef.current = qrcode;
         const config: Html5QrcodeCameraScanConfig = { fps: 5, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
         qrcode.start(activeCameraId, config, handleScan, undefined)
-            .catch(err => setMessage({ type: 'error', text: 'No se pudo iniciar el escáner.' }));
+            .catch(err => {
+                console.error("No se pudo iniciar el escáner.", err);
+                setMessage({ type: 'error', text: 'No se pudo iniciar el escáner.' });
+            });
         return () => {
             if (html5QrcodeRef.current?.isScanning) {
                 html5QrcodeRef.current.stop().catch(error => console.log("Scanner stop failed on cleanup.", error));
