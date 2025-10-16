@@ -16,9 +16,9 @@ const AllStudentsQRModal: React.FC<Props> = ({ students, subjectName, onClose })
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 print:p-0 print:bg-white">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl relative max-w-6xl w-full h-[90vh] flex flex-col print:shadow-none print:h-auto print:max-w-none">
+            <div className="bg-white/70 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-2xl relative max-w-6xl w-full h-[90vh] flex flex-col print:shadow-none print:h-auto print:max-w-none print:bg-white">
                 {/* --- Modal Header --- */}
-                <div className="flex justify-between items-center mb-4 pb-4 border-b print:hidden">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-black/10 print:hidden">
                     <div>
                         <h3 className="text-xl font-bold">Códigos QR para {subjectName}</h3>
                         <p className="text-sm text-gray-500">Usa el botón de imprimir para generar un PDF o enviar a tu impresora.</p>
@@ -37,10 +37,10 @@ const AllStudentsQRModal: React.FC<Props> = ({ students, subjectName, onClose })
                 </div>
 
                 {/* --- QR Code Grid --- */}
-                <div id="qr-print-area" className="flex-grow overflow-y-auto">
+                <div id="qr-print-area" className="flex-grow overflow-y-auto print:overflow-visible">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 p-4">
                         {students.sort((a, b) => a.name.localeCompare(b.name)).map(student => (
-                            <div key={student.id} className="flex flex-col items-center justify-center p-4 border rounded-lg text-center break-inside-avoid">
+                            <div key={student.id} className="flex flex-col items-center justify-center p-4 border border-black/10 rounded-lg text-center break-inside-avoid bg-white print:border-gray-200">
                                 <QRCodeSVG value={student.name} size={128} className="mb-2" />
                                 <p className="font-semibold text-gray-800 text-sm">{student.name}</p>
                             </div>
