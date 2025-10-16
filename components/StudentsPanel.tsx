@@ -3,7 +3,6 @@ import type { Student } from '../types';
 
 interface Props {
     students: Student[];
-    subjectId: string;
     studentsWithPendingAssignments: Set<string>;
     onAddStudentClick: () => void;
     onGradeStudentClick: () => void;
@@ -13,7 +12,6 @@ interface Props {
 
 const StudentsPanel: React.FC<Props> = ({
     students,
-    subjectId,
     studentsWithPendingAssignments,
     onAddStudentClick,
     onGradeStudentClick,
