@@ -22,7 +22,7 @@ const AttendanceDetailView: React.FC<{ attendedDates: string[], missedDates: str
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[60] p-4" onClick={onClose}>
-            <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-white/80 backdrop-blur-lg border border-white/20 p-6 rounded-2xl shadow-xl w-full max-w-2xl" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start">
                     <h3 className="text-lg font-bold mb-4">Detalle de Asistencia</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-800 transition-colors">
@@ -222,7 +222,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                     onClose={() => setShowAttendanceDetailModal(false)}
                 />
             )}
-            <div className="bg-white p-6 rounded-2xl shadow-2xl relative max-w-4xl w-full flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="bg-white/70 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-2xl relative max-w-4xl w-full flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors z-10">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -238,7 +238,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                                 id="period-select"
                                 value={selectedPeriod}
                                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                                className="text-sm border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                className="text-sm border-gray-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 bg-white/80"
                             >
                                 {availablePeriods.map(([key, { name }]) => (
                                     <option key={key} value={key}>{name}</option>
@@ -251,7 +251,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                 <div className="grid md:grid-cols-3 gap-6 flex-grow overflow-hidden">
                     <div className="md:col-span-2 overflow-y-auto pr-2">
                         <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
+                            <thead className="text-xs text-gray-700 uppercase bg-black/5 sticky top-0">
                                 <tr>
                                     <th scope="col" className="px-6 py-3">Criterio (%)</th>
                                     <th scope="col" className="px-6 py-3">Actividad</th>
@@ -262,9 +262,9 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                                 {gradeSummary.details.map((detail, index) => (
                                     <React.Fragment key={index}>
                                         {detail.hasContent ? detail.assignments.map((ag, agIndex) => (
-                                            <tr key={`${index}-${agIndex}`} className="bg-white border-b hover:bg-gray-50">
+                                            <tr key={`${index}-${agIndex}`} className="bg-transparent border-b border-black/10 hover:bg-black/5">
                                                 {agIndex === 0 && (
-                                                    <td rowSpan={detail.assignments.length} className="px-6 py-4 font-medium text-gray-900 border-r align-top">
+                                                    <td rowSpan={detail.assignments.length} className="px-6 py-4 font-medium text-gray-900 border-r border-black/10 align-top">
                                                         {detail.criterionName} ({detail.percentage}%)
                                                         <div className="text-xs text-primary-600 font-bold mt-1">
                                                             Promedio: {detail.average !== null ? detail.average.toFixed(1) : '-'}
@@ -284,8 +284,8 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                                                 </td>
                                             </tr>
                                         )) : (
-                                             <tr className="bg-white border-b hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900 border-r">{detail.criterionName} ({detail.percentage}%)</td>
+                                             <tr className="bg-transparent border-b border-black/10 hover:bg-black/5">
+                                                <td className="px-6 py-4 font-medium text-gray-900 border-r border-black/10">{detail.criterionName} ({detail.percentage}%)</td>
                                                 <td colSpan={2} className="px-6 py-4 text-gray-400 italic">No hay actividades evaluadas en este periodo.</td>
                                             </tr>
                                         )}
@@ -294,7 +294,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                             </tbody>
                         </table>
                     </div>
-                    <div className="md:col-span-1 flex flex-col items-center justify-start bg-gray-50 p-6 rounded-lg space-y-4 overflow-y-auto">
+                    <div className="md:col-span-1 flex flex-col items-center justify-start bg-black/5 p-6 rounded-lg space-y-4 overflow-y-auto">
                         <div className="text-center">
                             <h4 className="text-lg font-bold text-gray-800">Calificación {periodName}</h4>
                             <p className="text-5xl font-bold text-primary-700">{gradeSummary.finalGrade.toFixed(2)}</p>
