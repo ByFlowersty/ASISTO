@@ -1,139 +1,11 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import type { PlannedClass, Subject } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import GraphicOrganizerModal from './GraphicOrganizerModal';
-
-// --- Modal para añadir temario en bloque ---
-const BulkAddModal: React.FC<{
-    subject: Subject;
-    onClose: () => void;
-    onSave: () => void;
-}> = ({ subject, onClose, onSave }) => {
-    const [syllabusText, setSyllabusText] = useState('');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState('');
-
-    const handleSave = async () => {
-        setError('');
-        if (!syllabusText.trim() || !startDate) {
-            setError("Por favor, introduce el temario y selecciona una fecha de inicio.");
-            return;
-        }
-
-        setIsSaving(true);
-        
-        if (!subject.schedule || subject.schedule.length === 0) {
-            setError("Por favor, define un horario para la materia antes de añadir un temario.");
-            setIsSaving(false);
-            return;
-        }
-        
-        const lines = syllabusText.split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-
-        // Heuristic to skip header row if it exists
-        if (lines.length > 0 && (lines[0].toLowerCase().includes('tema') || lines[0].toLowerCase().includes('subtema'))) {
-            lines.shift();
-        }
-
-        const parsedTopics = lines.map(line => {
-            const parts = line.split('\t');
-            if (parts.length < 2) return null; // Must have at least Topic and Subtopic
-
-            const tema = parts[0].trim();
-            const subtema = parts[1].trim();
-            const descripcion = (parts[2] || '').trim();
-            
-            const title = tema ? `${tema}: ${subtema}` : subtema;
-
-            return {
-                title,
-                description: descripcion || null,
-            };
-        }).filter((topic): topic is { title: string; description: string | null } => topic !== null && topic.title !== '');
-
-
-        if (parsedTopics.length === 0) {
-            setError("No se encontraron temas válidos. Asegúrate de usar el formato correcto (columnas separadas por tabulación: Tema, Subtema, Descripción).");
-            setIsSaving(false);
-            return;
-        }
-
-        const scheduleDays = subject.schedule.map(s => s.day).sort();
-        let currentDate = new Date(startDate + 'T12:00:00Z');
-        const classesToInsert: Omit<PlannedClass, 'id' | 'created_at'>[] = [];
-
-        for (const topic of parsedTopics) {
-            while (true) {
-                const dayOfWeek = currentDate.getUTCDay() === 0 ? 7 : currentDate.getUTCDay();
-                if (scheduleDays.includes(dayOfWeek)) break;
-                currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-            }
-            
-            classesToInsert.push({
-                subject_id: subject.id,
-                class_date: currentDate.toISOString().split('T')[0],
-                title: topic.title,
-                description: topic.description,
-                status: 'planned'
-            });
-            
-            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-        }
-
-        const { error: insertError } = await supabase.from('planned_classes').insert(classesToInsert);
-
-        setIsSaving(false);
-
-        if (insertError) {
-            setError('Error al guardar el temario: ' + insertError.message);
-        } else {
-            onSave();
-        }
-    };
-    
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white p-6 rounded-2xl shadow-2xl relative max-w-lg w-full flex flex-col" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-                <h3 className="text-xl font-bold mb-1">Añadir Temario</h3>
-                <p className="text-md text-gray-600 mb-4">Pega el temario desde una hoja de cálculo (columnas: Tema, Subtema, Descripción).</p>
-                
-                <div className="space-y-4">
-                    <div>
-                        <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio del temario</label>
-                        <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border-gray-300 rounded-lg shadow-sm" />
-                    </div>
-                    <div>
-                        <label htmlFor="syllabus-text" className="block text-sm font-medium text-gray-700 mb-1">Temario (un tema por línea)</label>
-                        <textarea
-                            id="syllabus-text"
-                            value={syllabusText}
-                            onChange={e => setSyllabusText(e.target.value)}
-                            className="w-full h-48 p-2 border border-gray-300 rounded-lg resize-none"
-                            placeholder={"OPERACIONES BÁSICAS\	1. Escritura de texto\	Ingresar texto en el documento.\nOPERACIONES BÁSICAS\	2. Selección de texto\	Manipular el texto..."}
-                        />
-                    </div>
-                </div>
-
-                {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
-                
-                <div className="mt-6 flex justify-end gap-3">
-                    <button onClick={onClose} disabled={isSaving} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancelar</button>
-                    <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:bg-primary-300">
-                        {isSaving ? 'Guardando...' : 'Guardar Temario'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
+import BulkAddModal from './BulkAddModal';
+import SyllabusGeneratorModal from './SyllabusGeneratorModal';
 
 // --- Componente principal del planificador ---
 const PlannerManager: React.FC<{
@@ -142,9 +14,16 @@ const PlannerManager: React.FC<{
     onDataChange: () => void;
 }> = ({ subject, plannedClasses, onDataChange }) => {
     const [isBulkAddModalOpen, setIsBulkAddModalOpen] = useState(false);
+    const [isSyllabusGeneratorOpen, setIsSyllabusGeneratorOpen] = useState(false);
     const [isOrganizerLoading, setIsOrganizerLoading] = useState(false);
     const [organizerData, setOrganizerData] = useState<{ content: any; sources: any[] } | null>(null);
     const [selectedClassForOrganizer, setSelectedClassForOrganizer] = useState<PlannedClass | null>(null);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newClassTitle, setNewClassTitle] = useState('');
+    const [newClassDate, setNewClassDate] = useState('');
+    const [newClassDescription, setNewClassDescription] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
 
     const handleDeleteAll = async () => {
         if (window.confirm('¿Estás seguro de que quieres borrar todo el temario? Esta acción no se puede deshacer.')) {
@@ -157,6 +36,33 @@ const PlannerManager: React.FC<{
         }
     };
     
+    const handleSaveNewClass = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newClassTitle || !newClassDate) {
+            alert("El título y la fecha son obligatorios.");
+            return;
+        }
+        setIsSaving(true);
+        const { error } = await supabase.from('planned_classes').insert({
+            subject_id: subject.id,
+            title: newClassTitle,
+            description: newClassDescription || null,
+            class_date: newClassDate,
+            status: 'planned'
+        });
+        setIsSaving(false);
+    
+        if (error) {
+            alert('Error al guardar la clase: ' + error.message);
+        } else {
+            setNewClassTitle('');
+            setNewClassDate('');
+            setNewClassDescription('');
+            setShowAddForm(false);
+            onDataChange();
+        }
+    };
+
     const handleGenerateOrganizer = async (cls: PlannedClass) => {
         setSelectedClassForOrganizer(cls);
         setIsOrganizerLoading(true);
@@ -165,7 +71,7 @@ const PlannerManager: React.FC<{
         try {
             const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
             
-            const prompt = `Crea un organizador gráfico detallado sobre el siguiente tema de clase: "${cls.title}". Descripción adicional: "${cls.description || 'No hay descripción adicional.'}". Incluye un tema principal con su definición, y varios subtemas con sus puntos clave, conceptos y ejemplos relevantes.`;
+            const prompt = `Actúa como un profesor experto en la materia "${subject.name}". Crea un organizador gráfico detallado para el tema de clase: "${cls.title}". Descripción adicional: "${cls.description || 'No hay descripción adicional.'}". El contenido debe ser específico para la materia. Incluye un tema principal con su definición y varios subtemas con puntos clave, conceptos y ejemplos relevantes.`;
             
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
@@ -200,11 +106,7 @@ const PlannerManager: React.FC<{
                 },
             });
 
-            const jsonText = response.text;
-            if (!jsonText) {
-                throw new Error("La respuesta de la IA llegó vacía.");
-            }
-            const parsedContent = JSON.parse(jsonText);
+            const parsedContent = JSON.parse(response.text);
             
             setOrganizerData({ content: parsedContent, sources: [] });
         } catch (err) {
@@ -218,6 +120,8 @@ const PlannerManager: React.FC<{
     return (
         <div>
             {isBulkAddModalOpen && <BulkAddModal subject={subject} onClose={() => setIsBulkAddModalOpen(false)} onSave={() => { setIsBulkAddModalOpen(false); onDataChange(); }} />}
+            {isSyllabusGeneratorOpen && <SyllabusGeneratorModal subject={subject} onClose={() => setIsSyllabusGeneratorOpen(false)} onSave={() => { setIsSyllabusGeneratorOpen(false); onDataChange(); }} />}
+
             {selectedClassForOrganizer && (
                 <GraphicOrganizerModal
                     cls={selectedClassForOrganizer}
@@ -227,18 +131,49 @@ const PlannerManager: React.FC<{
                 />
             )}
             
-            <div className="bg-white p-6 rounded-2xl shadow-lg">
+            <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-3">
                     <h2 className="text-2xl font-bold">Planificador de Clases</h2>
-                    <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => setIsBulkAddModalOpen(true)} className="px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700">Añadir Temario</button>
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                         {!showAddForm && (
+                           <button onClick={() => setShowAddForm(true)} className="px-4 py-2 text-sm bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700">Añadir Tema</button>
+                         )}
+                        <button onClick={() => setIsBulkAddModalOpen(true)} className="px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700">Añadir en Bloque</button>
+                        <button onClick={() => setIsSyllabusGeneratorOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-cyan-600 text-white font-semibold rounded-lg shadow-sm hover:bg-cyan-700">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 2a1 1 0 00-1 1v1.586l-1.707 1.707A1 1 0 003 8v6a1 1 0 001 1h2a1 1 0 001-1V8a1 1 0 00-.293-.707L5 5.586V3a1 1 0 00-1-1zm0 14a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zM15 2a1 1 0 00-1 1v1.586l-1.707 1.707A1 1 0 0013 8v6a1 1 0 001 1h2a1 1 0 001-1V8a1 1 0 00-.293-.707L15 5.586V3a1 1 0 00-1-1zm0 14a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1zM9 4a1 1 0 00-1 1v2.293l-1.146 1.147a1 1 0 001.414 1.414L9 8.414l.854.854a1 1 0 101.414-1.414L10 6.293V5a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                            Generar Temario con IA
+                        </button>
                         {plannedClasses.length > 0 && 
                             <button onClick={handleDeleteAll} className="px-4 py-2 text-sm bg-red-500 text-white font-semibold rounded-lg shadow-sm hover:bg-red-600">Borrar Todo</button>
                         }
                     </div>
                 </div>
 
-                {plannedClasses.length === 0 ? (
+                {showAddForm && (
+                    <form onSubmit={handleSaveNewClass} className="my-4 p-4 border border-black/10 rounded-lg bg-black/5 space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-800">Añadir Nuevo Tema</h3>
+                        <div>
+                            <label htmlFor="new-class-title" className="block text-sm font-medium text-gray-700 mb-1">Título del Tema</label>
+                            <input type="text" id="new-class-title" value={newClassTitle} onChange={e => setNewClassTitle(e.target.value)} className="w-full border-gray-300 rounded-lg shadow-sm bg-white/80" required autoFocus />
+                        </div>
+                        <div>
+                            <label htmlFor="new-class-date" className="block text-sm font-medium text-gray-700 mb-1">Fecha de la Clase</label>
+                            <input type="date" id="new-class-date" value={newClassDate} onChange={e => setNewClassDate(e.target.value)} className="w-full border-gray-300 rounded-lg shadow-sm bg-white/80" required />
+                        </div>
+                        <div>
+                            <label htmlFor="new-class-description" className="block text-sm font-medium text-gray-700 mb-1">Descripción (Opcional)</label>
+                            <textarea id="new-class-description" value={newClassDescription} onChange={e => setNewClassDescription(e.target.value)} className="w-full border-gray-300 rounded-lg shadow-sm bg-white/80" rows={2}></textarea>
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <button type="button" onClick={() => setShowAddForm(false)} disabled={isSaving} className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
+                            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:bg-primary-300">
+                                {isSaving ? 'Guardando...' : 'Guardar Tema'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                {plannedClasses.length === 0 && !showAddForm ? (
                     <div className="text-center py-10">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -250,7 +185,7 @@ const PlannerManager: React.FC<{
                     <div className="max-h-[60vh] overflow-y-auto pr-2">
                         <ul className="space-y-3">
                             {plannedClasses.map(cls => (
-                                <li key={cls.id} className="p-4 bg-gray-50 rounded-lg flex flex-col sm:flex-row items-start justify-between hover:bg-gray-100 gap-4">
+                                <li key={cls.id} className="p-4 bg-black/5 rounded-lg flex flex-col sm:flex-row items-start justify-between hover:bg-black/10 gap-4">
                                     <div className="flex-grow">
                                         <p className="font-semibold text-gray-800">{cls.title}</p>
                                         {cls.description && (
