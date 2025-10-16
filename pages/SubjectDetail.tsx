@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import type { Subject, Student, AttendanceRecord, EvaluationCriterion, Assignment, Grade, Participation, PlannedClass } from '../types';
-import AttendanceCalendar from '../components/AttendanceCalendar';
+
 import StudentDetailModal from '../components/StudentDetailModal';
 import AllStudentsQRModal from '../components/AllStudentsQRModal';
 import PasswordPromptModal from '../components/PasswordPromptModal';
@@ -11,6 +11,9 @@ import ScheduleModal from '../components/ScheduleModal';
 import AddStudentsModal from '../components/AddStudentsModal';
 import PlannerManager from '../components/PlannerManager';
 import GradingPeriodManager from '../components/GradingPeriodManager';
+import AttendanceCalendar from '../components/AttendanceCalendar';
+import DetailPane from '../components/DetailPane';
+import StudentsPanel from '../components/StudentsPanel';
 
 // --- Sub-componente para Criterios de Evaluación ---
 const EvaluationManager: React.FC<{
@@ -95,10 +98,10 @@ const EvaluationManager: React.FC<{
   };
 
   return (
-    <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-        <h2 className="text-2xl font-bold mb-4">Criterios de Evaluación</h2>
+    <div className="bg-white p-6 rounded-xl shadow-lg border">
+        <h2 className="text-xl font-bold mb-4">Criterios de Evaluación</h2>
         
-        <div className="flex border-b border-black/10 mb-4">
+        <div className="flex border-b mb-4">
             {[1, 2, 3, 4].map(period => (
                 <button
                     key={period}
@@ -118,8 +121,8 @@ const EvaluationManager: React.FC<{
             <p className={`text-right text-sm font-semibold mt-1 ${totalPercentage > 100 ? 'text-red-500' : ''}`}>{totalPercentage}% de 100%</p>
         </div>
         <form onSubmit={handleAddCriterion} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (Ej: Tareas)" className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required/>
-            <input type="number" value={percentage} onChange={e => setPercentage(e.target.value === '' ? '' : +e.target.value)} placeholder="%" className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required min="1" max="100"/>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (Ej: Tareas)" className="border border-gray-300 rounded-lg px-3 py-2" required/>
+            <input type="number" value={percentage} onChange={e => setPercentage(e.target.value === '' ? '' : +e.target.value)} placeholder="%" className="border border-gray-300 rounded-lg px-3 py-2" required min="1" max="100"/>
             
             <div className="md:col-span-2 space-y-3">
                 <div className="flex items-center gap-2 pl-1">
@@ -127,7 +130,7 @@ const EvaluationManager: React.FC<{
                     <label htmlFor="is-default" className="text-sm text-gray-600">Actividades/Exámenes (por defecto)</label>
                 </div>
                 { !isAttendance && !isParticipation && (
-                     <select value={limit} onChange={e => setLimit(e.target.value as any)} className="border border-gray-300 rounded-lg px-3 py-2 w-full bg-white/70">
+                     <select value={limit} onChange={e => setLimit(e.target.value as any)} className="border border-gray-300 rounded-lg px-3 py-2 w-full">
                         <option value="multiple">Múltiples actividades</option>
                         <option value="single">Una sola actividad</option>
                     </select>
@@ -143,7 +146,7 @@ const EvaluationManager: React.FC<{
                   </div>
                 )}
                 {isParticipation && participationsFeatureEnabled && (
-                    <input type="number" value={maxPoints} onChange={e => setMaxPoints(e.target.value === '' ? '' : +e.target.value)} placeholder="Puntos para calificación máxima (10)" className="border border-gray-300 rounded-lg px-3 py-2 w-full mt-2 bg-white/70" required min="1"/>
+                    <input type="number" value={maxPoints} onChange={e => setMaxPoints(e.target.value === '' ? '' : +e.target.value)} placeholder="Puntos para calificación máxima (10)" className="border border-gray-300 rounded-lg px-3 py-2 w-full mt-2" required min="1"/>
                 )}
             </div>
 
@@ -158,7 +161,7 @@ const EvaluationManager: React.FC<{
                     default: description = c.assignment_limit === 'single' ? 'Una sola actividad' : 'Múltiples actividades';
                 }
                 return (
-                    <li key={c.id} className="flex justify-between items-center p-3 bg-black/5 rounded-lg">
+                    <li key={c.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                         <div>
                             <span>{c.name} - <span className="font-bold">{c.percentage}%</span></span>
                             <p className="text-xs text-gray-500">{description}</p>
@@ -205,13 +208,13 @@ const AssignmentManager: React.FC<{
     };
     
     return (
-         <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-            <h2 className="text-2xl font-bold mb-4">Actividades</h2>
+         <div className="bg-white p-6 rounded-xl shadow-lg border">
+            <h2 className="text-xl font-bold mb-4">Actividades</h2>
              {availableCriteria.length === 0 ? <p className="text-gray-500">Primero debes añadir al menos un criterio de evaluación de tipo "Actividades/Exámenes".</p> : (
                  <>
                     <form onSubmit={handleAddAssignment} className="flex flex-col sm:flex-row gap-3 mb-4">
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la actividad" className="flex-grow border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required />
-                        <select value={criterionId} onChange={e => setCriterionId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required>
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la actividad" className="flex-grow border border-gray-300 rounded-lg px-3 py-2" required />
+                        <select value={criterionId} onChange={e => setCriterionId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2" required>
                             <option value="">Selecciona un criterio</option>
                             {availableCriteria.map(c => <option key={c.id} value={c.id}>{c.name} (Parcial {c.grading_period || 1})</option>)}
                         </select>
@@ -220,7 +223,7 @@ const AssignmentManager: React.FC<{
                      {!canAddAssignment && criterionId && <p className="text-sm text-yellow-600 text-center mb-3">Este criterio solo permite una actividad y ya ha sido creada.</p>}
                      <ul className="space-y-2">
                          {assignments.map(a => (
-                             <li key={a.id} className="flex justify-between items-center p-3 bg-black/5 rounded-lg">
+                             <li key={a.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                  <div>
                                     <span className="font-medium">{a.name}</span>
                                     <p className="text-xs text-gray-500">{criteria.find(c=>c.id === a.evaluation_criterion_id)?.name} &bull; Creado el: {new Date(a.created_at).toLocaleDateString('es-ES')}</p>
@@ -234,39 +237,6 @@ const AssignmentManager: React.FC<{
     );
 };
 
-// --- Componente de información de horario ---
-const ScheduleInfo: React.FC<{ subject: Subject; onEdit: () => void }> = ({ subject, onEdit }) => {
-    if (!subject.schedule || subject.schedule.length === 0) {
-        return (
-            <div className="p-4 bg-yellow-500/30 backdrop-blur-md border-l-4 border-yellow-500 text-yellow-900 rounded-lg flex items-center justify-between">
-                <div>
-                    <p className="font-bold">Horario no definido</p>
-                    <p className="text-sm">Establece un horario para un cálculo de asistencia preciso y para usar el planificador.</p>
-                </div>
-                <button onClick={onEdit} className="px-3 py-1.5 bg-yellow-500 text-white text-sm font-semibold rounded-md hover:bg-yellow-600">Establecer</button>
-            </div>
-        )
-    }
-
-    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const scheduleString = subject.schedule
-        .sort((a,b) => a.day - b.day)
-        .map(s => {
-            const time = s.time ? new Date(`1970-01-01T${s.time}Z`).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : 'Hora no definida';
-            return `${dayNames[s.day - 1]} a las ${time} (${s.duration}h)`;
-        })
-        .join(' / ');
-
-    return (
-        <div className="p-4 bg-blue-500/30 backdrop-blur-md border-l-4 border-blue-500 text-blue-900 rounded-lg flex items-center justify-between">
-            <div>
-                <p className="font-bold">Horario:</p>
-                <p className="text-sm">{scheduleString}</p>
-            </div>
-            <button onClick={onEdit} className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 self-start">Editar</button>
-        </div>
-    );
-}
 
 // --- Componente para gestionar Participaciones ---
 const ParticipationManager: React.FC<{
@@ -315,14 +285,14 @@ const ParticipationManager: React.FC<{
     };
     
     return (
-        <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-            <h2 className="text-2xl font-bold mb-4">Registro de Participaciones</h2>
+        <div className="bg-white p-6 rounded-xl shadow-lg border">
+            <h2 className="text-xl font-bold mb-4">Registro de Participaciones</h2>
             <div className="mb-4">
                 <label htmlFor="participation-date" className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                <input type="date" id="participation-date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70"/>
+                <input type="date" id="participation-date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2"/>
             </div>
              <div className="max-h-96 overflow-y-auto pr-2">
-                <ul className="divide-y divide-gray-200/50">
+                <ul className="divide-y divide-gray-200">
                     {students.map(student => {
                         const studentData = participationsByStudent.get(student.id);
                         return (
@@ -355,33 +325,6 @@ const ParticipationManager: React.FC<{
 
 // --- Componente Principal ---
 type View = 'hub' | 'evaluation' | 'planner' | 'participations' | 'attendance';
-
-const DetailPane: React.FC<{
-  title: string;
-  active: boolean;
-  onBack: () => void;
-  children: React.ReactNode;
-}> = ({ title, active, onBack, children }) => {
-  return (
-    <div className={`fixed inset-0 bg-transparent z-40 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
-        <div className="h-full w-full flex flex-col p-6 md:p-10">
-            <div className="mb-6 flex items-center gap-4 flex-shrink-0">
-                <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                     Volver al Panel
-                </button>
-                <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
-            </div>
-            <div className="overflow-y-auto flex-grow">
-                {children}
-            </div>
-        </div>
-    </div>
-  );
-};
-
 
 const SubjectDetail: React.FC = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
@@ -535,161 +478,102 @@ const SubjectDetail: React.FC = () => {
         {isScheduleModalOpen && <ScheduleModal subject={subject} onClose={() => setIsScheduleModalOpen(false)} onSave={fetchData} />}
         {manualAttendanceDate && <ManualAttendanceModal date={manualAttendanceDate} students={students} subjectId={subjectId!} onClose={() => setManualAttendanceDate(null)} onSave={handleSaveManualAttendance} />}
 
-        <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+        <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
             <div>
-                <h1 className="text-4xl font-bold text-gray-900">{subject.name}</h1>
-                <p className="text-lg text-gray-600 capitalize">{subject.term}</p>
+                <h1 className="text-3xl font-bold text-slate-800">{subject.name}</h1>
+                <p className="text-lg text-gray-500 capitalize flex items-center gap-2">
+                    {subject.term}
+                    <button onClick={() => setIsScheduleModalOpen(true)} className="text-sm text-primary-600 hover:underline">
+                        (Editar Horario)
+                    </button>
+                </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-                <button onClick={() => navigate(`/subject/${subjectId}/rollcall`)} className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" /></svg>
+                <button onClick={() => navigate(`/subject/${subjectId}/rollcall`)} className="inline-flex items-center justify-center px-5 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" /></svg>
                     Pasar Lista
                 </button>
-                <button onClick={startAttendanceSession} className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
+                <button onClick={startAttendanceSession} className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-bold rounded-xl shadow-md hover:bg-primary-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
                     Asistencia con QR
                 </button>
             </div>
         </div>
         
-        <div className="mb-8"> <ScheduleInfo subject={subject} onEdit={() => setIsScheduleModalOpen(true)} /> </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2 space-y-6">
+                <div onClick={() => setActiveView('evaluation')} className="group p-6 bg-white rounded-xl shadow-lg border hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                    <div className="bg-primary-100 text-primary-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                    </div>
+                    <h3 className="mt-4 text-lg font-bold text-slate-800">Evaluación</h3>
+                    <p className="mt-1 text-sm text-gray-500">{criteria.length} Criterios &bull; {totalPercentage}% Cubierto</p>
+                </div>
 
-        <div className="relative">
-            {/* Hub View */}
-            <div className={`transition-all duration-300 ease-in-out ${activeView !== 'hub' ? 'opacity-0 -translate-x-full absolute' : 'opacity-100 translate-x-0'}`}>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Card 1: Evaluation */}
-                    <div onClick={() => setActiveView('evaluation')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
-                        <div className="bg-primary-100 text-primary-600 rounded-lg w-12 h-12 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-                        </div>
-                        <h3 className="mt-4 text-xl font-bold text-gray-800">Evaluación y Estudiantes</h3>
-                        <p className="mt-1 text-sm text-gray-500">{students.length} Estudiantes &bull; {totalPercentage}% Cubierto</p>
-                        <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
-                            Gestionar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </span>
+                <div onClick={() => setActiveView('planner')} className="group p-6 bg-white rounded-xl shadow-lg border hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                    <div className="bg-cyan-100 text-cyan-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </div>
-
-                    {/* Card 2: Planner */}
-                    <div onClick={() => setActiveView('planner')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
-                        <div className="bg-cyan-100 text-cyan-600 rounded-lg w-12 h-12 flex items-center justify-center">
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </div>
-                        <h3 className="mt-4 text-xl font-bold text-gray-800">Planificador de Clases</h3>
-                        <p className="mt-1 text-sm text-gray-500">{plannedClasses.length} clases planificadas</p>
-                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
-                            Planificar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </span>
+                    <h3 className="mt-4 text-lg font-bold text-slate-800">Planificador de Clases</h3>
+                    <p className="mt-1 text-sm text-gray-500">{plannedClasses.length} clases planificadas</p>
+                </div>
+                
+                {participationsFeatureEnabled && (
+                <div onClick={() => setActiveView('participations')} className="group p-6 bg-white rounded-xl shadow-lg border hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                     <div className="bg-amber-100 text-amber-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
                     </div>
-
-                    {/* Card 3: Participations */}
-                    {participationsFeatureEnabled && (
-                    <div onClick={() => setActiveView('participations')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
-                         <div className="bg-amber-100 text-amber-600 rounded-lg w-12 h-12 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-                        </div>
-                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Participaciones</h3>
-                        <p className="mt-1 text-sm text-gray-500">{participations.length} participaciones registradas</p>
-                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
-                            Registrar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </span>
+                    <h3 className="mt-4 text-lg font-bold text-slate-800">Participaciones</h3>
+                    <p className="mt-1 text-sm text-gray-500">{participations.length} participaciones registradas</p>
+                </div>
+                )}
+                
+                <div onClick={() => setActiveView('attendance')} className="group p-6 bg-white rounded-xl shadow-lg border hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                    <div className="bg-green-100 text-green-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    )}
-                    
-                    {/* Card 4: Attendance */}
-                    <div onClick={() => setActiveView('attendance')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
-                        <div className="bg-green-100 text-green-600 rounded-lg w-12 h-12 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Asistencia</h3>
-                        <p className="mt-1 text-sm text-gray-500">{scheduledSessionDates.length} sesiones de clase hasta hoy</p>
-                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
-                            Consultar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </span>
-                    </div>
-                 </div>
+                    <h3 className="mt-4 text-lg font-bold text-slate-800">Asistencia</h3>
+                    <p className="mt-1 text-sm text-gray-500">{scheduledSessionDates.length} sesiones de clase hasta hoy</p>
+                </div>
             </div>
 
-            {/* Evaluation Pane */}
-            <DetailPane title="Evaluación y Estudiantes" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2 space-y-8">
-                        <GradingPeriodManager subject={subject} onDatesChange={fetchData} />
-                        <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
-                        <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
-                    </div>
-
-                    <div className="lg:col-span-1 lg:sticky top-6">
-                        {criteria.length > 0 ? (
-                            <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-                                <h2 className="text-xl font-bold text-gray-800 mb-4">Estudiantes ({students.length})</h2>
-                                <div className="flex flex-col gap-2 mb-4">
-                                    <button onClick={() => setIsAddStudentsModalOpen(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                                        Añadir Estudiantes
-                                    </button>
-                                    <button onClick={() => navigate(`/subject/${subjectId}/multi-grade`)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-sm hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
-                                        Calificar Alumno con QR
-                                    </button>
-                                    {students.length > 0 && (
-                                        <button onClick={() => setShowAllQRs(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /></svg>
-                                            Ver todos los QR
-                                        </button>
-                                    )}
-                                </div>
-                                <ul className="space-y-2 max-h-[calc(100vh-420px)] overflow-y-auto pr-2 -mr-2">
-                                    {students.map(student => (
-                                        <li key={student.id} onClick={() => setSelectedStudent(student)} className="p-3 flex justify-between items-center bg-black/5 rounded-lg cursor-pointer hover:bg-primary-500/20 hover:shadow-md transition-all duration-200">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-primary-200 text-primary-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                                                    {student.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                                                </div>
-                                                <span className="font-medium text-gray-800 text-sm">{student.name}</span>
-                                            </div>
-                                            {studentsWithPendingAssignments.has(student.id) && (
-                                                <div title="Tiene actividades pendientes de calificar" className="flex-shrink-0">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ) : (
-                            <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg text-center border border-white/10">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">Sin Estudiantes</h3>
-                                <p className="mt-1 text-sm text-gray-500">Primero define los criterios de evaluación y luego añade estudiantes.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </DetailPane>
-
-            {/* Planner Pane */}
-            <DetailPane title="Planificador de Clases" active={activeView === 'planner'} onBack={() => setActiveView('hub')}>
-                <PlannerManager subject={subject} plannedClasses={plannedClasses} onDataChange={fetchData} />
-            </DetailPane>
-
-            {/* Participations Pane */}
-            {participationsFeatureEnabled && (
-                <DetailPane title="Registro de Participaciones" active={activeView === 'participations'} onBack={() => setActiveView('hub')}>
-                    <ParticipationManager subjectId={subjectId!} students={students} participations={participations} onParticipationsChange={fetchData} />
-                </DetailPane>
-            )}
-
-            {/* Attendance Pane */}
-            <DetailPane title="Registro de Asistencia" active={activeView === 'attendance'} onBack={() => setActiveView('hub')}>
-                 <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-                    <AttendanceCalendar subject={subject} attendance={attendance} students={students} onAddManualAttendance={handleRequestManualAttendance} />
-                </div>
-            </DetailPane>
-
+            <div className="lg:col-span-1 lg:sticky top-6">
+                <StudentsPanel 
+                    students={students}
+                    subjectId={subjectId!}
+                    studentsWithPendingAssignments={studentsWithPendingAssignments}
+                    onAddStudentClick={() => setIsAddStudentsModalOpen(true)}
+                    onGradeStudentClick={() => navigate(`/subject/${subjectId}/multi-grade`)}
+                    onShowAllQRsClick={() => setShowAllQRs(true)}
+                    onStudentClick={(student) => setSelectedStudent(student)}
+                />
+            </div>
         </div>
+
+        {/* --- Detail Panes --- */}
+        <DetailPane title="Gestión de Evaluación" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
+            <div className="space-y-8">
+                <GradingPeriodManager subject={subject} onDatesChange={fetchData} />
+                <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
+                <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
+            </div>
+        </DetailPane>
+
+        <DetailPane title="Planificador de Clases" active={activeView === 'planner'} onBack={() => setActiveView('hub')}>
+            <PlannerManager subject={subject} plannedClasses={plannedClasses} onDataChange={fetchData} />
+        </DetailPane>
+
+        {participationsFeatureEnabled && (
+            <DetailPane title="Registro de Participaciones" active={activeView === 'participations'} onBack={() => setActiveView('hub')}>
+                <ParticipationManager subjectId={subjectId!} students={students} participations={participations} onParticipationsChange={fetchData} />
+            </DetailPane>
+        )}
+
+        <DetailPane title="Registro de Asistencia" active={activeView === 'attendance'} onBack={() => setActiveView('hub')}>
+             <div className="bg-white p-6 rounded-xl shadow-lg border">
+                <AttendanceCalendar subject={subject} attendance={attendance} students={students} onAddManualAttendance={handleRequestManualAttendance} />
+            </div>
+        </DetailPane>
     </div>
   );
 };
