@@ -47,7 +47,7 @@ const AddStudentsModal: React.FC<Props> = ({ subjectId, onClose, onSave }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white p-6 rounded-2xl shadow-2xl relative max-w-lg w-full flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white/70 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-2xl relative max-w-lg w-full flex flex-col" onClick={e => e.stopPropagation()}>
                 <button type="button" onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -58,7 +58,7 @@ const AddStudentsModal: React.FC<Props> = ({ subjectId, onClose, onSave }) => {
                     <textarea
                         value={studentNames}
                         onChange={(e) => setStudentNames(e.target.value)}
-                        className="w-full flex-grow p-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm resize-none"
+                        className="w-full flex-grow p-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm resize-none bg-white/80"
                         placeholder="Juan Pérez García&#10;María López Hernández&#10;..."
                         rows={10}
                         required
