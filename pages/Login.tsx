@@ -37,21 +37,11 @@ const Login: React.FC = () => {
             />
            </div>
           <div className="inline-flex items-center justify-center gap-3 mb-2">
-            <svg className="h-10 w-10 text-primary-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 4h4v4H4V4z" fill="currentColor" />
-              <path d="M4 10h4v4H4v-4z" fill="currentColor" opacity="0.6" />
-              <path d="M10 4h4v4h-4V4z" fill="currentColor" opacity="0.6" />
-              <path d="M10 10h4v4h-4v-4z" fill="currentColor" />
-              <path d="M16 4h4v4h-4V4z" fill="currentColor" opacity="0.6" />
-              <path d="M4 16h4v4H4v-4z" fill="currentColor" opacity="0.6" />
-              <path d="M10 16h4v4h-4v-4z" fill="currentColor" opacity="0.6" />
-              <path d="M16 10h4v4h-4v-4z" fill="currentColor" opacity="0.6" />
-              <path d="M16 16h4v4h-4v-4z" fill="currentColor" />
-            </svg>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">AsistenciaQR</h1>
+            
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">CNS ONE</h1>
           </div>
           <p className="text-sm text-gray-500">
-            Bienvenido. Inicia sesión para continuar.
+           Powered by cynosure
           </p>
         </div>
 
