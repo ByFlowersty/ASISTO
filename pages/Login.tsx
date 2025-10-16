@@ -1,101 +1,697 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../services/supabase';
+import type { Subject, Student, AttendanceRecord, EvaluationCriterion, Assignment, Grade, Participation, PlannedClass } from '../types';
+import AttendanceCalendar from '../components/AttendanceCalendar';
+import StudentDetailModal from '../components/StudentDetailModal';
+import AllStudentsQRModal from '../components/AllStudentsQRModal';
+import PasswordPromptModal from '../components/PasswordPromptModal';
+import ManualAttendanceModal from '../components/ManualAttendanceModal';
+import ScheduleModal from '../components/ScheduleModal';
+import AddStudentsModal from '../components/AddStudentsModal';
+import PlannerManager from '../components/PlannerManager';
+import GradingPeriodManager from '../components/GradingPeriodManager';
 
-const Login: React.FC = () => {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+// --- Sub-componente para Criterios de Evaluación ---
+const EvaluationManager: React.FC<{
+  subjectId: string;
+  criteria: EvaluationCriterion[];
+  onCriteriaChange: () => void;
+  participationsFeatureEnabled: boolean;
+}> = ({ subjectId, criteria, onCriteriaChange, participationsFeatureEnabled }) => {
+  const [name, setName] = useState('');
+  const [percentage, setPercentage] = useState<number | ''>('');
+  const [limit, setLimit] = useState<'multiple' | 'single'>('multiple');
+  const [isAttendance, setIsAttendance] = useState(false);
+  const [isParticipation, setIsParticipation] = useState(false);
+  const [maxPoints, setMaxPoints] = useState<number | ''>('');
+  const [activePeriod, setActivePeriod] = useState<number>(1);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const filteredCriteria = criteria.filter(c => (c.grading_period || 1) === activePeriod);
+  const totalPercentage = filteredCriteria.reduce((sum, crit) => sum + crit.percentage, 0);
+
+  const handleCheckboxChange = (type: 'attendance' | 'participation') => {
+      if (type === 'attendance') {
+          setIsAttendance(!isAttendance);
+          if (!isAttendance) setIsParticipation(false); // Uncheck other if this one is checked
+      } else if (type === 'participation') {
+          setIsParticipation(!isParticipation);
+          if (!isParticipation) setIsAttendance(false); // Uncheck other if this one is checked
+      }
+  };
+
+  const handleAddCriterion = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validPassword = import.meta.env.VITE_LOGIN_PASSWORD;
-
-    if (!validPassword) {
-      setError('La contraseña de la aplicación no está configurada. Contacta al administrador.');
+    if (!name || percentage === '' || +percentage <= 0) {
+        alert('Por favor, introduce un nombre y un porcentaje válido.');
+        return;
+    }
+    if (totalPercentage + +percentage > 100) {
+      alert('El porcentaje total para este parcial no puede superar el 100%.');
       return;
     }
-    
-    if (password === validPassword) {
-      sessionStorage.setItem('isLoggedIn', 'true');
-      navigate('/', { replace: true });
-    } else {
-      setError('Contraseña incorrecta. Inténtalo de nuevo.');
-      setPassword('');
+     if (isParticipation && (maxPoints === '' || +maxPoints <= 0)) {
+        alert('Por favor, define los puntos necesarios para la calificación máxima.');
+        return;
+    }
+
+    const newCriterion: Partial<EvaluationCriterion> = {
+        subject_id: subjectId,
+        name,
+        percentage: +percentage,
+        type: 'default',
+        assignment_limit: limit,
+        grading_period: activePeriod,
+    };
+
+    if (isAttendance) {
+        newCriterion.type = 'attendance';
+        newCriterion.assignment_limit = 'single';
+    } else if (isParticipation) {
+        newCriterion.type = 'participation';
+        newCriterion.assignment_limit = 'single';
+        newCriterion.max_points = +maxPoints!;
+    }
+
+    const { error } = await supabase.from('evaluation_criteria').insert(newCriterion);
+    if (error) alert('Error al añadir criterio: ' + error.message);
+    else {
+      setName('');
+      setPercentage('');
+      setLimit('multiple');
+      setIsAttendance(false);
+      setIsParticipation(false);
+      setMaxPoints('');
+      onCriteriaChange();
+    }
+  };
+
+  const handleDeleteCriterion = async (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este criterio? Esto también eliminará las actividades y calificaciones asociadas.')) {
+        const { error } = await supabase.from('evaluation_criteria').delete().eq('id', id);
+        if (error) alert('Error al eliminar criterio: ' + error.message);
+        else onCriteriaChange();
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-primary-950">
-      {/* Animated Gradient Shapes */}
-      <div className="absolute top-0 left-0 w-full h-full">
-        <div className="absolute top-[-50px] left-[-50px] w-72 h-72 bg-pink-500 rounded-full filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-[-100px] right-5 w-72 h-72 bg-cyan-500 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-5 left-20 w-72 h-72 bg-primary-500 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white/10 backdrop-blur-md rounded-2xl shadow-lg border border-white/20">
-          <div className="text-center">
-             <div className="inline-flex items-center justify-center gap-3 mb-4">
-                 <svg className="h-10 w-10 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 4h4v4H4V4z" fill="currentColor"/>
-                    <path d="M4 10h4v4H4v-4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M10 4h4v4h-4V4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M10 10h4v4h-4v-4z" fill="currentColor"/>
-                    <path d="M16 4h4v4h-4V4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M4 16h4v4H4v-4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M10 16h4v4h-4v-4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M16 10h4v4h-4v-4z" fill="currentColor" opacity="0.6"/>
-                    <path d="M16 16h4v4h-4v-4z" fill="currentColor"/>
-                </svg>
-                <h1 className="text-3xl font-bold tracking-wider text-white">AsistenciaQR</h1>
-            </div>
-            <p className="mt-2 text-sm text-gray-300">
-                Acceso para prueba piloto.
-            </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-                </svg>
-              </span>
-              <input
-                id="password-input"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="relative block w-full px-3 py-3 pl-10 text-white placeholder-gray-400 bg-white/10 border border-white/20 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 sm:text-sm"
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            
-            {error && (
-              <p className="text-sm text-center text-pink-400">{error}</p>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                className="group relative flex justify-center w-full px-4 py-3 text-sm font-medium text-white border border-transparent rounded-lg bg-gradient-to-r from-cyan-500 to-primary-600 hover:from-cyan-600 hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary-900 focus:ring-cyan-500 transition-all duration-300"
-              >
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <svg className="h-5 w-5 text-cyan-300 group-hover:text-cyan-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                Entrar
-              </button>
-            </div>
-          </form>
+    <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
+        <h2 className="text-2xl font-bold mb-4">Criterios de Evaluación</h2>
+        
+        <div className="flex border-b border-black/10 mb-4">
+            {[1, 2, 3, 4].map(period => (
+                <button
+                    key={period}
+                    type="button"
+                    onClick={() => setActivePeriod(period)}
+                    className={`px-4 py-2 -mb-px border-b-2 font-semibold text-sm transition-colors ${activePeriod === period ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    {period}er Parcial
+                </button>
+            ))}
         </div>
-      </div>
+        
+        <div className="mb-4">
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className={`h-2.5 rounded-full ${totalPercentage > 100 ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(totalPercentage, 100)}%` }}></div>
+            </div>
+            <p className={`text-right text-sm font-semibold mt-1 ${totalPercentage > 100 ? 'text-red-500' : ''}`}>{totalPercentage}% de 100%</p>
+        </div>
+        <form onSubmit={handleAddCriterion} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre (Ej: Tareas)" className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required/>
+            <input type="number" value={percentage} onChange={e => setPercentage(e.target.value === '' ? '' : +e.target.value)} placeholder="%" className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required min="1" max="100"/>
+            
+            <div className="md:col-span-2 space-y-3">
+                <div className="flex items-center gap-2 pl-1">
+                    <input id="is-default" type="radio" checked={!isAttendance && !isParticipation} onChange={() => { setIsAttendance(false); setIsParticipation(false); }} name="criterionType" className="h-4 w-4 border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    <label htmlFor="is-default" className="text-sm text-gray-600">Actividades/Exámenes (por defecto)</label>
+                </div>
+                { !isAttendance && !isParticipation && (
+                     <select value={limit} onChange={e => setLimit(e.target.value as any)} className="border border-gray-300 rounded-lg px-3 py-2 w-full bg-white/70">
+                        <option value="multiple">Múltiples actividades</option>
+                        <option value="single">Una sola actividad</option>
+                    </select>
+                )}
+                 <div className="flex items-center gap-2 pl-1">
+                    <input id="is-attendance" type="radio" checked={isAttendance} onChange={() => handleCheckboxChange('attendance')} name="criterionType" className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    <label htmlFor="is-attendance" className="text-sm text-gray-600">Calificar con asistencia</label>
+                </div>
+                {participationsFeatureEnabled && (
+                  <div className="flex items-center gap-2 pl-1">
+                      <input id="is-participation" type="radio" checked={isParticipation} onChange={() => handleCheckboxChange('participation')} name="criterionType" className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                      <label htmlFor="is-participation" className="text-sm text-gray-600">Calificar con participaciones</label>
+                  </div>
+                )}
+                {isParticipation && participationsFeatureEnabled && (
+                    <input type="number" value={maxPoints} onChange={e => setMaxPoints(e.target.value === '' ? '' : +e.target.value)} placeholder="Puntos para calificación máxima (10)" className="border border-gray-300 rounded-lg px-3 py-2 w-full mt-2 bg-white/70" required min="1"/>
+                )}
+            </div>
+
+            <button type="submit" className="md:col-span-2 px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700">Añadir Criterio</button>
+        </form>
+        <ul className="space-y-2">
+            {filteredCriteria.map(c => {
+                 let description = '';
+                switch(c.type) {
+                    case 'attendance': description = 'Automático por asistencia'; break;
+                    case 'participation': description = `Automático por participaciones (Meta: ${c.max_points} pts)`; break;
+                    default: description = c.assignment_limit === 'single' ? 'Una sola actividad' : 'Múltiples actividades';
+                }
+                return (
+                    <li key={c.id} className="flex justify-between items-center p-3 bg-black/5 rounded-lg">
+                        <div>
+                            <span>{c.name} - <span className="font-bold">{c.percentage}%</span></span>
+                            <p className="text-xs text-gray-500">{description}</p>
+                        </div>
+                        <button onClick={() => handleDeleteCriterion(c.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Eliminar</button>
+                    </li>
+                );
+            })}
+        </ul>
     </div>
   );
 };
 
-export default Login;
+// --- Sub-componente para Actividades ---
+const AssignmentManager: React.FC<{
+    subjectId: string;
+    assignments: Assignment[];
+    criteria: EvaluationCriterion[];
+    onAssignmentsChange: () => void;
+}> = ({ subjectId, assignments, criteria, onAssignmentsChange }) => {
+    const [name, setName] = useState('');
+    const [criterionId, setCriterionId] = useState('');
+
+    const availableCriteria = criteria.filter(c => c.type === 'default');
+    const selectedCriterion = criteria.find(c => c.id === criterionId);
+    
+    const canAddAssignment = selectedCriterion ? 
+        selectedCriterion.assignment_limit === 'multiple' || !assignments.some(a => a.evaluation_criterion_id === criterionId)
+        : false;
+
+    const handleAddAssignment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name || !criterionId || !canAddAssignment) {
+            alert('Por favor, selecciona un criterio válido y escribe un nombre para la actividad.');
+            return;
+        }
+        const { error } = await supabase.from('assignments').insert({ subject_id: subjectId, name, evaluation_criterion_id: criterionId });
+        if (error) alert('Error al añadir actividad: ' + error.message);
+        else {
+            setName('');
+            setCriterionId('');
+            onAssignmentsChange();
+        }
+    };
+    
+    return (
+         <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
+            <h2 className="text-2xl font-bold mb-4">Actividades</h2>
+             {availableCriteria.length === 0 ? <p className="text-gray-500">Primero debes añadir al menos un criterio de evaluación de tipo "Actividades/Exámenes".</p> : (
+                 <>
+                    <form onSubmit={handleAddAssignment} className="flex flex-col sm:flex-row gap-3 mb-4">
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la actividad" className="flex-grow border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required />
+                        <select value={criterionId} onChange={e => setCriterionId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70" required>
+                            <option value="">Selecciona un criterio</option>
+                            {availableCriteria.map(c => <option key={c.id} value={c.id}>{c.name} (Parcial {c.grading_period || 1})</option>)}
+                        </select>
+                        <button type="submit" disabled={!canAddAssignment || !criterionId || !name} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:bg-gray-300">Crear</button>
+                    </form>
+                     {!canAddAssignment && criterionId && <p className="text-sm text-yellow-600 text-center mb-3">Este criterio solo permite una actividad y ya ha sido creada.</p>}
+                     <ul className="space-y-2">
+                         {assignments.map(a => (
+                             <li key={a.id} className="flex justify-between items-center p-3 bg-black/5 rounded-lg">
+                                 <div>
+                                    <span className="font-medium">{a.name}</span>
+                                    <p className="text-xs text-gray-500">{criteria.find(c=>c.id === a.evaluation_criterion_id)?.name} &bull; Creado el: {new Date(a.created_at).toLocaleDateString('es-ES')}</p>
+                                 </div>
+                             </li>
+                         ))}
+                     </ul>
+                 </>
+             )}
+         </div>
+    );
+};
+
+// --- Componente de información de horario ---
+const ScheduleInfo: React.FC<{ subject: Subject; onEdit: () => void }> = ({ subject, onEdit }) => {
+    if (!subject.schedule || subject.schedule.length === 0) {
+        return (
+            <div className="p-4 bg-yellow-500/30 backdrop-blur-md border-l-4 border-yellow-500 text-yellow-900 rounded-lg flex items-center justify-between">
+                <div>
+                    <p className="font-bold">Horario no definido</p>
+                    <p className="text-sm">Establece un horario para un cálculo de asistencia preciso y para usar el planificador.</p>
+                </div>
+                <button onClick={onEdit} className="px-3 py-1.5 bg-yellow-500 text-white text-sm font-semibold rounded-md hover:bg-yellow-600">Establecer</button>
+            </div>
+        )
+    }
+
+    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const scheduleString = subject.schedule
+        .sort((a,b) => a.day - b.day)
+        .map(s => {
+            const time = s.time ? new Date(`1970-01-01T${s.time}Z`).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : 'Hora no definida';
+            return `${dayNames[s.day - 1]} a las ${time} (${s.duration}h)`;
+        })
+        .join(' / ');
+
+    return (
+        <div className="p-4 bg-blue-500/30 backdrop-blur-md border-l-4 border-blue-500 text-blue-900 rounded-lg flex items-center justify-between">
+            <div>
+                <p className="font-bold">Horario:</p>
+                <p className="text-sm">{scheduleString}</p>
+            </div>
+            <button onClick={onEdit} className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 self-start">Editar</button>
+        </div>
+    );
+}
+
+// --- Componente para gestionar Participaciones ---
+const ParticipationManager: React.FC<{
+    subjectId: string;
+    students: Student[];
+    participations: Participation[];
+    onParticipationsChange: () => void;
+}> = ({ subjectId, students, participations, onParticipationsChange }) => {
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [loadingStudentId, setLoadingStudentId] = useState<string | null>(null);
+
+    const participationsByStudent = useMemo(() => {
+        const map = new Map<string, { semesterTotal: number; daily: Participation[] }>();
+        students.forEach(s => map.set(s.id, { semesterTotal: 0, daily: [] }));
+        participations.forEach(p => {
+            if (map.has(p.student_id)) {
+                const current = map.get(p.student_id)!;
+                current.semesterTotal += p.points;
+                if (p.date === selectedDate) {
+                    current.daily.push(p);
+                }
+            }
+        });
+        return map;
+    }, [students, participations, selectedDate]);
+    
+    const handleAddParticipation = async (studentId: string, points: number) => {
+        setLoadingStudentId(studentId);
+        const { error } = await supabase.from('participations').insert({
+            student_id: studentId,
+            subject_id: subjectId,
+            points: points,
+            date: selectedDate
+        });
+        if (error) alert('Error al añadir participación: ' + error.message);
+        else onParticipationsChange();
+        setLoadingStudentId(null);
+    };
+
+    const handleDeleteParticipation = async (participationId: string) => {
+        if (window.confirm('¿Eliminar esta participación?')) {
+            const { error } = await supabase.from('participations').delete().eq('id', participationId);
+            if (error) alert('Error al eliminar: ' + error.message);
+            else onParticipationsChange();
+        }
+    };
+    
+    return (
+        <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
+            <h2 className="text-2xl font-bold mb-4">Registro de Participaciones</h2>
+            <div className="mb-4">
+                <label htmlFor="participation-date" className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input type="date" id="participation-date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 bg-white/70"/>
+            </div>
+             <div className="max-h-96 overflow-y-auto pr-2">
+                <ul className="divide-y divide-gray-200/50">
+                    {students.map(student => {
+                        const studentData = participationsByStudent.get(student.id);
+                        return (
+                            <li key={student.id} className="py-3 px-2 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                                <div>
+                                    <p className="text-gray-800 font-medium">{student.name}</p>
+                                    <p className="text-xs text-gray-500">Total Semestre: <span className="font-bold">{studentData?.semesterTotal.toFixed(1) ?? '0.0'} pts</span></p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap gap-1 min-h-[2rem] items-center">
+                                        {studentData?.daily.map(p => (
+                                            <span key={p.id} className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                +{p.points}
+                                                <button onClick={() => handleDeleteParticipation(p.id)} className="text-blue-500 hover:text-blue-800">&times;</button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => handleAddParticipation(student.id, 0.5)} disabled={loadingStudentId === student.id} className="px-2.5 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-300">+0.5</button>
+                                    <button onClick={() => handleAddParticipation(student.id, 1)} disabled={loadingStudentId === student.id} className="px-2.5 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300">+1</button>
+                                </div>
+                            </li>
+                        )
+                    })}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
+
+// --- Componente Principal ---
+type View = 'hub' | 'evaluation' | 'planner' | 'participations' | 'attendance';
+
+const DetailPane: React.FC<{
+  title: string;
+  active: boolean;
+  onBack: () => void;
+  children: React.ReactNode;
+}> = ({ title, active, onBack, children }) => {
+  return (
+    <div className={`fixed inset-0 bg-transparent z-40 transition-transform duration-300 ease-in-out transform ${active ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none'}`}>
+        <div className="h-full w-full flex flex-col p-6 md:p-10">
+            <div className="mb-6 flex items-center gap-4 flex-shrink-0">
+                <button onClick={onBack} className="inline-flex items-center gap-2 text-primary-600 font-semibold hover:text-primary-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                     Volver al Panel
+                </button>
+                <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
+            </div>
+            <div className="overflow-y-auto flex-grow">
+                {children}
+            </div>
+        </div>
+    </div>
+  );
+};
+
+
+const SubjectDetail: React.FC = () => {
+  const { subjectId } = useParams<{ subjectId: string }>();
+  const navigate = useNavigate();
+  const [subject, setSubject] = useState<Subject | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [criteria, setCriteria] = useState<EvaluationCriterion[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [participations, setParticipations] = useState<Participation[]>([]);
+  const [plannedClasses, setPlannedClasses] = useState<PlannedClass[]>([]);
+  const [participationsFeatureEnabled, setParticipationsFeatureEnabled] = useState(true);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<View>('hub');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showAllQRs, setShowAllQRs] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isAddStudentsModalOpen, setIsAddStudentsModalOpen] = useState(false);
+
+  const [verifyingPasswordForDate, setVerifyingPasswordForDate] = useState<Date | null>(null);
+  const [manualAttendanceDate, setManualAttendanceDate] = useState<Date | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!subjectId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const [
+          subjectRes, 
+          studentsRes, 
+          attendanceRes, 
+          criteriaRes, 
+          assignmentsRes, 
+          gradesRes, 
+          plannedClassesRes
+      ] = await Promise.all([
+        supabase.from('subjects').select('*').eq('id', subjectId).single(),
+        supabase.from('students').select('*').eq('subject_id', subjectId).order('name'),
+        supabase.from('attendance_records').select(`*, students (name)`).eq('subject_id', subjectId),
+        supabase.from('evaluation_criteria').select('*').eq('subject_id', subjectId).order('created_at'),
+        supabase.from('assignments').select('*').eq('subject_id', subjectId).order('created_at'),
+        supabase.from('grades').select('*').eq('subject_id', subjectId),
+        supabase.from('planned_classes').select('*').eq('subject_id', subjectId).order('class_date'),
+      ]);
+
+      const responses = { subjectRes, studentsRes, attendanceRes, criteriaRes, assignmentsRes, gradesRes, plannedClassesRes };
+      for (const [key, res] of Object.entries(responses)) {
+        if (res.error) throw new Error(`Error fetching ${key}: ${res.error.message}`);
+      }
+      
+      setSubject(subjectRes.data);
+      setStudents(studentsRes.data || []);
+      setAttendance((attendanceRes.data as any) || []);
+      setCriteria(criteriaRes.data || []);
+      setAssignments(assignmentsRes.data || []);
+      setGrades(gradesRes.data || []);
+      setPlannedClasses(plannedClassesRes.data || []);
+
+      const participationsRes = await supabase.from('participations').select('*').eq('subject_id', subjectId);
+      
+      if (participationsRes.error) {
+          console.warn( "Error al cargar participaciones. La funcionalidad de participaciones está deshabilitada.", participationsRes.error );
+          setParticipations([]);
+          setParticipationsFeatureEnabled(false);
+      } else {
+          setParticipations(participationsRes.data || []);
+          setParticipationsFeatureEnabled(true);
+      }
+
+    } catch (err: any) {
+      setError('Error al cargar los datos: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [subjectId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const scheduledSessionDates = useMemo(() => {
+    if (!subject?.schedule || subject.schedule.length === 0) return [];
+    
+    const schoolEvents = [ { title: 'Inicio de semestre', type: 'event', date: '2025-09-01' }, { title: 'Suspensión de clases', type: 'holiday', date: '2025-09-16' }, { title: 'Efemerides', type: 'event', date: '2025-10-01' }, { title: 'Aplicación de exámenes 1er parcial', type: 'exam', start: '2025-10-06', end: '2025-10-08' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-10-11', end: '2025-10-12' }, { title: 'Entrega de calif. 1er parcial', type: 'grades', date: '2025-10-17' }, { title: 'Aplicación de exámenes 2do parcial', type: 'exam', start: '2025-11-03', end: '2025-11-05' }, { title: 'Efemerides', type: 'event', date: '2025-11-06' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-11-11', end: '2025-11-12' }, { title: 'Entrega de calif. 2do parcial', type: 'grades', date: '2025-11-14' }, { title: 'Suspensión de clases', type: 'holiday', date: '2025-11-17' }, { title: 'Semana de conferencias', type: 'event', start: '2025-12-01', end: '2025-12-05' }, { title: 'Aplicación de exámenes 3er parcial', type: 'exam', start: '2025-12-03', end: '2025-12-05' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2025-12-08', end: '2025-12-09' }, { title: 'Entrega de calif. 3er parcial', type: 'grades', date: '2025-12-12' }, { title: 'Efemerides', type: 'event', date: '2025-12-16' }, { title: 'Aplicación de exámenes 4o parcial', type: 'exam', start: '2025-12-17', end: '2025-12-19' }, { title: 'Fin de Semestre', type: 'event', date: '2025-12-19' }, { title: 'Periodo Vacacional', type: 'vacation', start: '2025-12-19', end: '2026-02-03' }, { title: 'Exámenes Extemporáneos', type: 'exam', start: '2026-01-05', end: '2026-01-06' }, { title: 'Entrega de calif. Finales', type: 'grades', date: '2026-01-09' }, { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-16' }, { title: 'Recursamiento de Materias', type: 'event', date: '2026-01-19' }, { title: 'Aplicación de exámenes extraordinarios', type: 'exam', date: '2026-01-23' }, { title: 'Inicio de Semestre', type: 'event', date: '2026-02-04' }, ];
+    const eventMap = new Map();
+    schoolEvents.forEach(event => { if ('date' in event && event.date) { eventMap.set(event.date, event); } else if ('start' in event && 'end' in event && event.start && event.end) { let currentDate = new Date(event.start + 'T12:00:00Z'); let endDate = new Date(event.end + 'T12:00:00Z'); while (currentDate <= endDate) { const dateString = currentDate.toISOString().split('T')[0]; eventMap.set(dateString, event); currentDate.setUTCDate(currentDate.getUTCDate() + 1); } } });
+    const dates: string[] = [];
+    const scheduleDays = subject.schedule.map(s => s.day);
+    const semesterStart = new Date(subject.grading_periods_dates?.['1'] || '2025-09-01' + 'T00:00:00Z');
+    const today = new Date();
+    let current = new Date(semesterStart.getTime());
+    while(current <= today) { const currentDayOfWeek = current.getUTCDay() === 0 ? 7 : current.getUTCDay(); if (scheduleDays.includes(currentDayOfWeek)) { const dateString = current.toISOString().split('T')[0]; const event = eventMap.get(dateString); const isNonLectiveDay = event && (event.type === 'holiday' || event.type === 'vacation'); if (!isNonLectiveDay) { dates.push(dateString); } } current.setUTCDate(current.getUTCDate() + 1); }
+    return dates;
+  }, [subject]);
+  
+    const studentsWithPendingAssignments = useMemo(() => {
+        const defaultCriteriaIds = new Set( criteria.filter(c => c.type === 'default').map(c => c.id) );
+        const gradableAssignments = assignments.filter(a => defaultCriteriaIds.has(a.evaluation_criterion_id));
+        if (gradableAssignments.length === 0) return new Set<string>();
+        const studentGradedAssignments = new Map<string, Set<string>>();
+        grades.forEach(grade => { if (!studentGradedAssignments.has(grade.student_id)) { studentGradedAssignments.set(grade.student_id, new Set()); } studentGradedAssignments.get(grade.student_id)!.add(grade.assignment_id); });
+        const pendingStudents = new Set<string>();
+        students.forEach(student => { const gradedAssignmentIds = studentGradedAssignments.get(student.id) || new Set(); const hasMissingAssignment = gradableAssignments.some(assignment => !gradedAssignmentIds.has(assignment.id)); if (hasMissingAssignment) { pendingStudents.add(student.id); } });
+        return pendingStudents;
+    }, [students, assignments, grades, criteria]);
+
+  const startAttendanceSession = async () => {
+    if (!subjectId) return;
+    try {
+        const { data, error } = await supabase.from('attendance_sessions').insert({ subject_id: subjectId }).select().single();
+        if (error) throw error;
+        if (data) navigate(`/scan/${data.id}`);
+    } catch (err: any) {
+        setError("No se pudo iniciar la sesión de asistencia: " + err.message);
+    }
+  };
+
+  const handleRequestManualAttendance = (date: Date) => {
+    const isVerified = sessionStorage.getItem('manualAttendanceVerified') === 'true';
+    if (isVerified) { setManualAttendanceDate(date); } 
+    else { setVerifyingPasswordForDate(date); }
+  };
+
+  const handlePasswordSuccess = () => {
+      sessionStorage.setItem('manualAttendanceVerified', 'true');
+      setManualAttendanceDate(verifyingPasswordForDate);
+      setVerifyingPasswordForDate(null);
+  };
+
+  const handleSaveManualAttendance = () => {
+      setManualAttendanceDate(null);
+      fetchData();
+  };
+
+
+  if (loading) return <p className="text-center text-gray-500 mt-8">Cargando...</p>;
+  if (error) return <p className="text-center text-red-500 mt-8">{error}</p>;
+  if (!subject) return <p className="text-center text-gray-500 mt-8">Materia no encontrada.</p>;
+
+  const totalPercentage = criteria.reduce((sum, crit) => sum + crit.percentage, 0);
+
+  return (
+    <div>
+        {selectedStudent && <StudentDetailModal student={selectedStudent} subject={subject} criteria={criteria} assignments={assignments} grades={grades.filter(g => g.student_id === selectedStudent.id)} allAttendance={attendance} participations={participations.filter(p => p.student_id === selectedStudent.id)} scheduledSessionDates={scheduledSessionDates} onClose={() => setSelectedStudent(null)} />}
+        {showAllQRs && <AllStudentsQRModal students={students} subjectName={subject.name} onClose={() => setShowAllQRs(false)} />}
+        {isAddStudentsModalOpen && <AddStudentsModal subjectId={subjectId!} onClose={() => setIsAddStudentsModalOpen(false)} onSave={() => { fetchData(); setIsAddStudentsModalOpen(false); }} />}
+        {verifyingPasswordForDate && <PasswordPromptModal onSuccess={handlePasswordSuccess} onClose={() => setVerifyingPasswordForDate(null)} />}
+        {isScheduleModalOpen && <ScheduleModal subject={subject} onClose={() => setIsScheduleModalOpen(false)} onSave={fetchData} />}
+        {manualAttendanceDate && <ManualAttendanceModal date={manualAttendanceDate} students={students} subjectId={subjectId!} onClose={() => setManualAttendanceDate(null)} onSave={handleSaveManualAttendance} />}
+
+        <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+            <div>
+                <h1 className="text-4xl font-bold text-gray-900">{subject.name}</h1>
+                <p className="text-lg text-gray-600 capitalize">{subject.term}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={() => navigate(`/subject/${subjectId}/rollcall`)} className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" /></svg>
+                    Pasar Lista
+                </button>
+                <button onClick={startAttendanceSession} className="inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
+                    Asistencia con QR
+                </button>
+            </div>
+        </div>
+        
+        <div className="mb-8"> <ScheduleInfo subject={subject} onEdit={() => setIsScheduleModalOpen(true)} /> </div>
+
+        <div className="relative">
+            {/* Hub View */}
+            <div className={`transition-all duration-300 ease-in-out ${activeView !== 'hub' ? 'opacity-0 -translate-x-full absolute' : 'opacity-100 translate-x-0'}`}>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Card 1: Evaluation */}
+                    <div onClick={() => setActiveView('evaluation')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-primary-100 text-primary-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Evaluación y Estudiantes</h3>
+                        <p className="mt-1 text-sm text-gray-500">{students.length} Estudiantes &bull; {totalPercentage}% Cubierto</p>
+                        <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Gestionar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+
+                    {/* Card 2: Planner */}
+                    <div onClick={() => setActiveView('planner')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-cyan-100 text-cyan-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Planificador de Clases</h3>
+                        <p className="mt-1 text-sm text-gray-500">{plannedClasses.length} clases planificadas</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Planificar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+
+                    {/* Card 3: Participations */}
+                    {participationsFeatureEnabled && (
+                    <div onClick={() => setActiveView('participations')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                         <div className="bg-amber-100 text-amber-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Participaciones</h3>
+                        <p className="mt-1 text-sm text-gray-500">{participations.length} participaciones registradas</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Registrar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+                    )}
+                    
+                    {/* Card 4: Attendance */}
+                    <div onClick={() => setActiveView('attendance')} className="group p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
+                        <div className="bg-green-100 text-green-600 rounded-lg w-12 h-12 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold text-gray-800">Registro de Asistencia</h3>
+                        <p className="mt-1 text-sm text-gray-500">{scheduledSessionDates.length} sesiones de clase hasta hoy</p>
+                         <span className="mt-4 text-sm font-semibold text-primary-600 group-hover:text-primary-800 flex items-center gap-2">
+                            Consultar <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                        </span>
+                    </div>
+                 </div>
+            </div>
+
+            {/* Evaluation Pane */}
+            <DetailPane title="Evaluación y Estudiantes" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    <div className="lg:col-span-2 space-y-8">
+                        <GradingPeriodManager subject={subject} onDatesChange={fetchData} />
+                        <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
+                        <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
+                    </div>
+
+                    <div className="lg:col-span-1 lg:sticky top-6">
+                        {criteria.length > 0 ? (
+                            <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Estudiantes ({students.length})</h2>
+                                <div className="flex flex-col gap-2 mb-4">
+                                    <button onClick={() => setIsAddStudentsModalOpen(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-primary-600 text-white font-semibold rounded-lg shadow-sm hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                                        Añadir Estudiantes
+                                    </button>
+                                    <button onClick={() => navigate(`/subject/${subjectId}/multi-grade`)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-green-500 text-white font-semibold rounded-lg shadow-sm hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM3 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 1a1 1 0 011-1h1a1 1 0 110 2H6a1 1 0 01-1-1zM10 3a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V3zm2 1a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM10 10a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm3 1a1 1 0 10-2 0v1a1 1 0 102 0v-1z" clipRule="evenodd" /></svg>
+                                        Calificar Alumno con QR
+                                    </button>
+                                    {students.length > 0 && (
+                                        <button onClick={() => setShowAllQRs(true)} className="w-full inline-flex items-center justify-center px-4 py-2 text-sm bg-blue-500 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" /></svg>
+                                            Ver todos los QR
+                                        </button>
+                                    )}
+                                </div>
+                                <ul className="space-y-2 max-h-[calc(100vh-420px)] overflow-y-auto pr-2 -mr-2">
+                                    {students.map(student => (
+                                        <li key={student.id} onClick={() => setSelectedStudent(student)} className="p-3 flex justify-between items-center bg-black/5 rounded-lg cursor-pointer hover:bg-primary-500/20 hover:shadow-md transition-all duration-200">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-full bg-primary-200 text-primary-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                                    {student.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                                </div>
+                                                <span className="font-medium text-gray-800 text-sm">{student.name}</span>
+                                            </div>
+                                            {studentsWithPendingAssignments.has(student.id) && (
+                                                <div title="Tiene actividades pendientes de calificar" className="flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M8.257 3.099c.636-1.21 2.242-1.21 2.878 0l5.394 10.273c.636 1.21-.242 2.628-1.439 2.628H4.302c-1.197 0-2.075-1.418-1.439-2.628L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg text-center border border-white/10">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <h3 className="mt-2 text-sm font-medium text-gray-900">Sin Estudiantes</h3>
+                                <p className="mt-1 text-sm text-gray-500">Primero define los criterios de evaluación y luego añade estudiantes.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </DetailPane>
+
+            {/* Planner Pane */}
+            <DetailPane title="Planificador de Clases" active={activeView === 'planner'} onBack={() => setActiveView('hub')}>
+                <PlannerManager subject={subject} plannedClasses={plannedClasses} onDataChange={fetchData} />
+            </DetailPane>
+
+            {/* Participations Pane */}
+            {participationsFeatureEnabled && (
+                <DetailPane title="Registro de Participaciones" active={activeView === 'participations'} onBack={() => setActiveView('hub')}>
+                    <ParticipationManager subjectId={subjectId!} students={students} participations={participations} onParticipationsChange={fetchData} />
+                </DetailPane>
+            )}
+
+            {/* Attendance Pane */}
+            <DetailPane title="Registro de Asistencia" active={activeView === 'attendance'} onBack={() => setActiveView('hub')}>
+                 <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
+                    <AttendanceCalendar subject={subject} attendance={attendance} students={students} onAddManualAttendance={handleRequestManualAttendance} />
+                </div>
+            </DetailPane>
+
+        </div>
+    </div>
+  );
+};
+
+export default SubjectDetail;
