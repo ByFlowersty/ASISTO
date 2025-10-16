@@ -50,7 +50,7 @@ const GraphicOrganizerModal: React.FC<Props> = ({ cls, isLoading, data, onClose 
         return (
             <div>
                 {tema_principal && (
-                    <div className="mb-6 pb-4 border-b">
+                    <div className="mb-6 pb-4 border-b border-black/10">
                         <h3 className="text-2xl font-bold text-primary-800">{tema_principal.nombre || cls.title}</h3>
                         {tema_principal.definicion && <p className="mt-2 text-gray-600">{tema_principal.definicion}</p>}
                     </div>
@@ -58,7 +58,7 @@ const GraphicOrganizerModal: React.FC<Props> = ({ cls, isLoading, data, onClose 
                 
                 <div className="space-y-6">
                     {subtemas && Array.isArray(subtemas) ? subtemas.map((subtema, index) => (
-                        <div key={index} className="p-4 bg-primary-50 rounded-lg">
+                        <div key={index} className="p-4 bg-primary-500/10 rounded-lg">
                             <h4 className="font-bold text-lg text-primary-700">{subtema.nombre}</h4>
                             {subtema.puntos_clave && Array.isArray(subtema.puntos_clave) && (
                                 <ul className="mt-2 list-disc list-inside space-y-1 text-gray-700 pl-2">
@@ -99,7 +99,7 @@ const GraphicOrganizerModal: React.FC<Props> = ({ cls, isLoading, data, onClose 
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white p-6 rounded-2xl shadow-2xl relative max-w-3xl w-full flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white/70 backdrop-blur-xl border border-white/20 p-6 rounded-2xl shadow-2xl relative max-w-3xl w-full flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-4">
                     <div>
                          <h2 className="text-xl font-bold">Organizador Gráfico</h2>
