@@ -4,11 +4,11 @@ import { supabase } from '../services/supabase';
 import type { Subject } from '../types';
 
 const SubjectCard: React.FC<{ subject: Subject }> = ({ subject }) => (
-    <Link to={`/subject/${subject.id}`} className="block p-6 bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+    <Link to={`/subject/${subject.id}`} className="block p-6 bg-white/50 backdrop-blur-md border border-white/10 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         <h5 className="mb-2 text-xl font-bold tracking-tight text-gray-900">{subject.name}</h5>
         <p className="font-normal text-gray-500 capitalize">{subject.term}</p>
         <div className="mt-4 flex justify-end">
-            <span className="inline-flex items-center text-sm font-medium text-primary-500 hover:text-primary-700">
+            <span className="inline-flex items-center text-sm font-medium text-primary-700 hover:text-primary-800">
                 Ver Detalles
                 <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
             </span>
@@ -51,13 +51,13 @@ const TodaysSchedule: React.FC<{ subjects: Subject[] }> = ({ subjects }) => {
     };
 
     return (
-        <div className="mb-8 p-6 bg-white rounded-2xl shadow-lg">
+        <div className="mb-8 p-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10">
             <h2 className="text-2xl font-bold text-gray-800">Tu Horario para Hoy</h2>
             <p className="text-md text-gray-500 capitalize">{formattedDate}</p>
             
             {todaysClasses.length === 0 ? (
-                <div className="mt-6 text-center py-8 bg-gray-50 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="mt-6 text-center py-8 bg-black/5 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.4-8.4l-.7.7M4.3 4.3l-.7.7m16.1 0l-.7-.7M3.6 20.4l-.7-.7" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 3a9 9 0 100 18 9 9 0 000-18z" />
@@ -69,7 +69,7 @@ const TodaysSchedule: React.FC<{ subjects: Subject[] }> = ({ subjects }) => {
                 <ul className="mt-4 space-y-3">
                     {todaysClasses.map((cls, index) => (
                         <li key={index}>
-                            <Link to={`/subject/${cls.subjectId}`} className="block p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors duration-200">
+                            <Link to={`/subject/${cls.subjectId}`} className="block p-4 bg-primary-500/10 hover:bg-primary-500/20 rounded-lg transition-colors duration-200">
                                 <div className="flex items-center gap-4">
                                     <div className="flex-shrink-0 text-center bg-primary-600 text-white font-bold rounded-md px-3 py-1.5">
                                         <p className="text-sm">{new Date(`1970-01-01T${cls.time}Z`).toLocaleTimeString('es-ES', { hour: 'numeric', minute: '2-digit', hour12: false, timeZone: 'UTC' })}</p>
@@ -139,7 +139,7 @@ const Dashboard: React.FC = () => {
       {error && <p className="text-center text-red-500">{error}</p>}
       
       {!loading && !error && subjects.length === 0 && (
-          <div className="text-center py-12 px-6 bg-white rounded-2xl shadow-lg">
+          <div className="text-center py-12 px-6 bg-white/50 backdrop-blur-md rounded-2xl shadow-lg border border-white/10">
               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               </svg>
