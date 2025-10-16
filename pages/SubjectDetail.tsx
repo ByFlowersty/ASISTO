@@ -10,6 +10,7 @@ import ManualAttendanceModal from '../components/ManualAttendanceModal';
 import ScheduleModal from '../components/ScheduleModal';
 import AddStudentsModal from '../components/AddStudentsModal';
 import PlannerManager from '../components/PlannerManager';
+import GradingPeriodManager from '../components/GradingPeriodManager';
 
 // --- Sub-componente para Criterios de Evaluación ---
 const EvaluationManager: React.FC<{
@@ -455,7 +456,7 @@ const SubjectDetail: React.FC = () => {
     schoolEvents.forEach(event => { if ('date' in event && event.date) { eventMap.set(event.date, event); } else if ('start' in event && 'end' in event && event.start && event.end) { let currentDate = new Date(event.start + 'T12:00:00Z'); let endDate = new Date(event.end + 'T12:00:00Z'); while (currentDate <= endDate) { const dateString = currentDate.toISOString().split('T')[0]; eventMap.set(dateString, event); currentDate.setUTCDate(currentDate.getUTCDate() + 1); } } });
     const dates: string[] = [];
     const scheduleDays = subject.schedule.map(s => s.day);
-    const semesterStart = new Date('2025-09-01T00:00:00Z');
+    const semesterStart = new Date(subject.grading_periods_dates?.['1'] || '2025-09-01' + 'T00:00:00Z');
     const today = new Date();
     let current = new Date(semesterStart.getTime());
     while(current <= today) { const currentDayOfWeek = current.getUTCDay() === 0 ? 7 : current.getUTCDay(); if (scheduleDays.includes(currentDayOfWeek)) { const dateString = current.toISOString().split('T')[0]; const event = eventMap.get(dateString); const isNonLectiveDay = event && (event.type === 'holiday' || event.type === 'vacation'); if (!isNonLectiveDay) { dates.push(dateString); } } current.setUTCDate(current.getUTCDate() + 1); }
@@ -510,7 +511,7 @@ const SubjectDetail: React.FC = () => {
 
   return (
     <div>
-        {selectedStudent && <StudentDetailModal student={selectedStudent} subjectName={subject.name} criteria={criteria} assignments={assignments} grades={grades.filter(g => g.student_id === selectedStudent.id)} allAttendance={attendance} participations={participations.filter(p => p.student_id === selectedStudent.id)} scheduledSessionDates={scheduledSessionDates} onClose={() => setSelectedStudent(null)} />}
+        {selectedStudent && <StudentDetailModal student={selectedStudent} subject={subject} criteria={criteria} assignments={assignments} grades={grades.filter(g => g.student_id === selectedStudent.id)} allAttendance={attendance} participations={participations.filter(p => p.student_id === selectedStudent.id)} scheduledSessionDates={scheduledSessionDates} onClose={() => setSelectedStudent(null)} />}
         {showAllQRs && <AllStudentsQRModal students={students} subjectName={subject.name} onClose={() => setShowAllQRs(false)} />}
         {isAddStudentsModalOpen && <AddStudentsModal subjectId={subjectId!} onClose={() => setIsAddStudentsModalOpen(false)} onSave={() => { fetchData(); setIsAddStudentsModalOpen(false); }} />}
         {verifyingPasswordForDate && <PasswordPromptModal onSuccess={handlePasswordSuccess} onClose={() => setVerifyingPasswordForDate(null)} />}
@@ -596,6 +597,7 @@ const SubjectDetail: React.FC = () => {
             <DetailPane title="Evaluación y Estudiantes" active={activeView === 'evaluation'} onBack={() => setActiveView('hub')}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 space-y-8">
+                        <GradingPeriodManager subject={subject} onDatesChange={fetchData} />
                         <EvaluationManager subjectId={subjectId!} criteria={criteria} onCriteriaChange={fetchData} participationsFeatureEnabled={participationsFeatureEnabled} />
                         <AssignmentManager subjectId={subjectId!} assignments={assignments} criteria={criteria} onAssignmentsChange={fetchData} />
                     </div>
