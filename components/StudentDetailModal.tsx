@@ -130,10 +130,14 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
         const startDate = new Date(period.start + 'T00:00:00Z').getTime();
         const endDate = new Date(period.end + 'T23:59:59Z').getTime();
 
+        const periodCriteria = selectedPeriod === 'final'
+            ? criteria
+            : criteria.filter(c => c.grading_period === parseInt(selectedPeriod, 10));
+
         let totalWeightedScoreContribution = 0;
         let totalPercentageInPeriod = 0;
         
-        const criteriaWithDetails = criteria.map(criterion => {
+        const criteriaWithDetails = periodCriteria.map(criterion => {
             let criterionAverage: number | null = null;
             let assignmentGrades: { assignmentName: string; score: number | null }[] = [];
             let hasContentInPeriod = false;
