@@ -1,4 +1,5 @@
 
+
 export interface ScheduleEntry {
   day: number;
   time: string;
@@ -45,6 +46,7 @@ export interface EvaluationCriterion {
   assignment_limit: 'single' | 'multiple';
   type: 'default' | 'attendance' | 'participation';
   max_points?: number | null;
+  grading_period?: number | null;
 }
 
 export interface Assignment {
