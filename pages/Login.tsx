@@ -35,6 +35,7 @@ const Login: React.FC = () => {
               alt="Logo"
               className="mx-auto h-16 w-auto"
             />
+           </div>
           <div className="inline-flex items-center justify-center gap-3 mb-2">
             <svg className="h-10 w-10 text-primary-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M4 4h4v4H4V4z" fill="currentColor" />
