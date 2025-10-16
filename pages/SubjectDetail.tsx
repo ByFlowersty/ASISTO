@@ -25,8 +25,10 @@ const EvaluationManager: React.FC<{
   const [isAttendance, setIsAttendance] = useState(false);
   const [isParticipation, setIsParticipation] = useState(false);
   const [maxPoints, setMaxPoints] = useState<number | ''>('');
+  const [activePeriod, setActivePeriod] = useState<number>(1);
 
-  const totalPercentage = criteria.reduce((sum, crit) => sum + crit.percentage, 0);
+  const filteredCriteria = criteria.filter(c => (c.grading_period || 1) === activePeriod);
+  const totalPercentage = filteredCriteria.reduce((sum, crit) => sum + crit.percentage, 0);
 
   const handleCheckboxChange = (type: 'attendance' | 'participation') => {
       if (type === 'attendance') {
@@ -45,7 +47,7 @@ const EvaluationManager: React.FC<{
         return;
     }
     if (totalPercentage + +percentage > 100) {
-      alert('El porcentaje total no puede superar el 100%.');
+      alert('El porcentaje total para este parcial no puede superar el 100%.');
       return;
     }
      if (isParticipation && (maxPoints === '' || +maxPoints <= 0)) {
@@ -59,6 +61,7 @@ const EvaluationManager: React.FC<{
         percentage: +percentage,
         type: 'default',
         assignment_limit: limit,
+        grading_period: activePeriod,
     };
 
     if (isAttendance) {
@@ -94,6 +97,20 @@ const EvaluationManager: React.FC<{
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg">
         <h2 className="text-2xl font-bold mb-4">Criterios de Evaluación</h2>
+        
+        <div className="flex border-b mb-4">
+            {[1, 2, 3, 4].map(period => (
+                <button
+                    key={period}
+                    type="button"
+                    onClick={() => setActivePeriod(period)}
+                    className={`px-4 py-2 -mb-px border-b-2 font-semibold text-sm transition-colors ${activePeriod === period ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    {period}er Parcial
+                </button>
+            ))}
+        </div>
+        
         <div className="mb-4">
             <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div className={`h-2.5 rounded-full ${totalPercentage > 100 ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(totalPercentage, 100)}%` }}></div>
@@ -133,7 +150,7 @@ const EvaluationManager: React.FC<{
             <button type="submit" className="md:col-span-2 px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700">Añadir Criterio</button>
         </form>
         <ul className="space-y-2">
-            {criteria.map(c => {
+            {filteredCriteria.map(c => {
                  let description = '';
                 switch(c.type) {
                     case 'attendance': description = 'Automático por asistencia'; break;
@@ -196,7 +213,7 @@ const AssignmentManager: React.FC<{
                         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre de la actividad" className="flex-grow border border-gray-300 rounded-lg px-3 py-2" required />
                         <select value={criterionId} onChange={e => setCriterionId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2" required>
                             <option value="">Selecciona un criterio</option>
-                            {availableCriteria.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            {availableCriteria.map(c => <option key={c.id} value={c.id}>{c.name} (Parcial {c.grading_period || 1})</option>)}
                         </select>
                         <button type="submit" disabled={!canAddAssignment || !criterionId || !name} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:bg-gray-300">Crear</button>
                     </form>
