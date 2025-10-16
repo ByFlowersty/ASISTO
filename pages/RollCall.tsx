@@ -137,7 +137,7 @@ const RollCall: React.FC = () => {
                     <h1 className="text-3xl font-bold text-gray-800">Pase de Lista Manual</h1>
                     <p className="text-lg text-gray-600">{subject?.name} - <span className="capitalize">{todayString}</span></p>
                 </div>
-                 <button onClick={() => navigate(`/subject/${subjectId}`)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 self-start md:self-center">
+                 <button onClick={() => navigate(`/subject/${subjectId}`)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm rounded-xl hover:bg-white self-start md:self-center">
                      Volver
                  </button>
             </div>
@@ -147,14 +147,14 @@ const RollCall: React.FC = () => {
                     <p className="font-bold">La asistencia para el día de hoy ya ha sido registrada.</p>
                 </div>
             ) : (
-             <div className="bg-white p-6 rounded-2xl shadow-lg">
+             <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
                 <div className="flex flex-wrap gap-2 mb-4">
                      <button onClick={() => markAllAs('present')} className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600">Marcar todos como Presentes</button>
                      <button onClick={() => markAllAs('absent')} className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600">Marcar todos como Ausentes</button>
                 </div>
 
                 <div className="max-h-[60vh] overflow-y-auto pr-2">
-                    <ul className="divide-y divide-gray-200">
+                    <ul className="divide-y divide-black/10">
                         {students.map(student => (
                             <li key={student.id} className="py-3 px-2 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                 <span className="font-medium text-gray-800">{student.name}</span>
@@ -174,7 +174,7 @@ const RollCall: React.FC = () => {
                     </ul>
                 </div>
                 
-                <div className="flex justify-end mt-6 pt-4 border-t">
+                <div className="flex justify-end mt-6 pt-4 border-t border-black/10">
                     <button onClick={handleSave} disabled={isSaving} className="px-6 py-3 bg-primary-600 text-white font-bold rounded-xl shadow-md hover:bg-primary-700 disabled:bg-primary-300">
                         {isSaving ? 'Guardando...' : 'Guardar Asistencia'}
                     </button>
