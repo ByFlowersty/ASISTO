@@ -67,7 +67,11 @@ const SyllabusGeneratorModal: React.FC<Props> = ({ subject, onClose, onSave }) =
                 },
             });
 
-            const generatedTopics = JSON.parse(response.text);
+            const text = response.text;
+            if (!text) {
+                throw new Error("La respuesta de la IA estaba vacía.");
+            }
+            const generatedTopics = JSON.parse(text);
 
             if (!Array.isArray(generatedTopics) || generatedTopics.length === 0) {
                 throw new Error("La IA no generó un temario válido. Inténtalo de nuevo con una descripción más detallada.");
