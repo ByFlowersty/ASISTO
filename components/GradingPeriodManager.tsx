@@ -34,7 +34,7 @@ const GradingPeriodManager: React.FC<Props> = ({ subject, onDatesChange }) => {
     const hasChanges = JSON.stringify(dates) !== JSON.stringify(subject.grading_periods_dates || {});
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-lg">
+        <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
             <h2 className="text-2xl font-bold mb-4">Fechas de Parciales</h2>
             <p className="text-sm text-gray-500 mb-4">Define la fecha de inicio para cada parcial. El final de un parcial se calcula automáticamente como el día anterior al inicio del siguiente.</p>
             <div className="space-y-4">
@@ -46,7 +46,7 @@ const GradingPeriodManager: React.FC<Props> = ({ subject, onDatesChange }) => {
                             id={`period-${p}-start`}
                             value={dates[p] || ''}
                             onChange={(e) => handleDateChange(p, e.target.value)}
-                            className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm"
+                            className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm bg-white/70"
                         />
                     </div>
                 ))}
