@@ -540,7 +540,6 @@ const SubjectDetail: React.FC = () => {
             <div className="lg:col-span-1 lg:sticky top-6">
                 <StudentsPanel 
                     students={students}
-                    subjectId={subjectId!}
                     studentsWithPendingAssignments={studentsWithPendingAssignments}
                     onAddStudentClick={() => setIsAddStudentsModalOpen(true)}
                     onGradeStudentClick={() => navigate(`/subject/${subjectId}/multi-grade`)}
