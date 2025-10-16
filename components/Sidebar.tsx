@@ -22,7 +22,7 @@ const Sidebar: React.FC = () => {
     return (
         <aside className="w-64 bg-white text-gray-800 flex-col flex-shrink-0 hidden sm:flex border-r">
             <div className="h-24 flex items-center justify-center border-b">
-                <h1 className="text-2xl font-bold tracking-wider text-primary-700">AsistenciaQR</h1>
+                <h1 className="text-2xl font-bold tracking-wider text-primary-700">CNS ONE</h1>
             </div>
             <nav className="flex-1 px-4 py-6 space-y-2">
                 {navLinks.map(link => (
