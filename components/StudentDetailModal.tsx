@@ -122,10 +122,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
     const gradeSummary = useMemo(() => {
         const period = dynamicGradingPeriods[selectedPeriod];
         if (!period) {
-             return {
-                details: [],
-                finalGrade: 0,
-            };
+            return { details: [], finalGrade: 0 };
         }
         const startDate = new Date(period.start + 'T00:00:00Z').getTime();
         const endDate = new Date(period.end + 'T23:59:59Z').getTime();
@@ -134,9 +131,9 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
             ? criteria
             : criteria.filter(c => (c.grading_period || 1) === parseInt(selectedPeriod, 10));
 
+        const totalDefinedPercentage = periodCriteria.reduce((sum, crit) => sum + crit.percentage, 0);
         let totalWeightedScoreContribution = 0;
-        let totalPercentageInPeriod = 0;
-        
+
         const criteriaWithDetails = periodCriteria.map(criterion => {
             let criterionAverage: number | null = null;
             let assignmentGrades: { assignmentName: string; score: number | null }[] = [];
@@ -154,32 +151,31 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                     const pDate = new Date(p.date + 'T12:00:00Z').getTime();
                     return pDate >= startDate && pDate <= endDate;
                 });
-                
-                if (periodParticipations.length > 0 || (selectedPeriod !== 'final' && criterion.max_points) || selectedPeriod === 'final') {
-                     hasContentInPeriod = true;
-                     const totalPoints = periodParticipations.reduce((sum, p) => sum + p.points, 0);
-                     const maxPoints = criterion.max_points || 1;
-                     criterionAverage = Math.min((totalPoints / maxPoints) * 10, 10);
-                     assignmentGrades.push({ assignmentName: `Puntos acumulados: ${totalPoints.toFixed(1)} / ${maxPoints}`, score: criterionAverage });
-                }
 
+                if (periodParticipations.length > 0 || (selectedPeriod !== 'final' && criterion.max_points) || selectedPeriod === 'final') {
+                    hasContentInPeriod = true;
+                    const totalPoints = periodParticipations.reduce((sum, p) => sum + p.points, 0);
+                    const maxPoints = criterion.max_points || 1;
+                    criterionAverage = Math.min((totalPoints / maxPoints) * 10, 10);
+                    assignmentGrades.push({ assignmentName: `Puntos acumulados: ${totalPoints.toFixed(1)} / ${maxPoints}`, score: criterionAverage });
+                }
             } else { // Default type
                 const relevantAssignments = assignments.filter(a => a.evaluation_criterion_id === criterion.id);
                 const periodAssignments = relevantAssignments.filter(a => {
                     const aDate = new Date(a.created_at).getTime();
                     return aDate >= startDate && aDate <= endDate;
                 });
-                
+
                 if (periodAssignments.length > 0) {
-                     hasContentInPeriod = true;
-                     assignmentGrades = periodAssignments.map(a => {
+                    hasContentInPeriod = true;
+                    assignmentGrades = periodAssignments.map(a => {
                         const grade = grades.find(g => g.assignment_id === a.id);
                         return {
                             assignmentName: a.name,
                             score: grade ? grade.score : null
                         };
                     });
-        
+
                     const gradedAssignments = assignmentGrades.filter(ag => ag.score !== null);
                     if (gradedAssignments.length > 0) {
                         const sumOfScores = gradedAssignments.reduce((sum, currentGrade) => sum + (currentGrade.score!), 0);
@@ -189,10 +185,9 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                     }
                 }
             }
-            
-            if (hasContentInPeriod && criterionAverage !== null) {
+
+            if (criterionAverage !== null) {
                 totalWeightedScoreContribution += (criterionAverage / 10) * criterion.percentage;
-                totalPercentageInPeriod += criterion.percentage;
             }
 
             return {
@@ -201,18 +196,20 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                 average: criterionAverage,
                 assignments: assignmentGrades,
                 criterionType: criterion.type,
+                hasContent: hasContentInPeriod
             };
         });
-        
-        const finalGrade = selectedPeriod === 'final'
-            ? totalWeightedScoreContribution
-            : (totalPercentageInPeriod > 0 ? (totalWeightedScoreContribution / totalPercentageInPeriod) * 100 : 0);
 
+        const finalScoreOutOf100 = totalDefinedPercentage > 0
+            ? (totalWeightedScoreContribution / totalDefinedPercentage) * 100
+            : 0;
+            
         return {
             details: criteriaWithDetails,
-            finalGrade: finalGrade / 10, // Convert to 0-10 scale
+            finalGrade: finalScoreOutOf100 / 10,
         };
     }, [criteria, assignments, grades, participations, student.id, filteredScheduledDates, attendedDates, selectedPeriod, dynamicGradingPeriods]);
+
 
     const periodName = dynamicGradingPeriods[selectedPeriod]?.name || 'Final';
 
@@ -264,7 +261,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
                             <tbody>
                                 {gradeSummary.details.map((detail, index) => (
                                     <React.Fragment key={index}>
-                                        {detail.assignments.length > 0 ? detail.assignments.map((ag, agIndex) => (
+                                        {detail.hasContent ? detail.assignments.map((ag, agIndex) => (
                                             <tr key={`${index}-${agIndex}`} className="bg-white border-b hover:bg-gray-50">
                                                 {agIndex === 0 && (
                                                     <td rowSpan={detail.assignments.length} className="px-6 py-4 font-medium text-gray-900 border-r align-top">
