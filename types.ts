@@ -11,6 +11,7 @@ export interface Subject {
   name: string;
   term: 'semestre' | 'cuatrimestre';
   schedule?: ScheduleEntry[] | null;
+  grading_periods_dates?: { [key: string]: string } | null;
 }
 
 export interface Student {
