@@ -132,7 +132,7 @@ const StudentDetailModal: React.FC<Props> = ({ student, subject, criteria, assig
 
         const periodCriteria = selectedPeriod === 'final'
             ? criteria
-            : criteria.filter(c => c.grading_period === parseInt(selectedPeriod, 10));
+            : criteria.filter(c => (c.grading_period || 1) === parseInt(selectedPeriod, 10));
 
         let totalWeightedScoreContribution = 0;
         let totalPercentageInPeriod = 0;
