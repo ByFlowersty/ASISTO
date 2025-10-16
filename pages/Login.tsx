@@ -8,7 +8,14 @@ const Login: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'Test2404') {
+    const validPassword = import.meta.env.VITE_LOGIN_PASSWORD;
+
+    if (!validPassword) {
+      setError('La contraseña de la aplicación no está configurada. Contacta al administrador.');
+      return;
+    }
+    
+    if (password === validPassword) {
       sessionStorage.setItem('isLoggedIn', 'true');
       navigate('/', { replace: true });
     } else {
